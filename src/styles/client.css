@@ -1,0 +1,99 @@
+.client-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-light);
+}
+
+/* TOPBAR */
+.client-topbar {
+  height: 56px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+}
+
+.client-title {
+  font-weight: 700;
+  color: var(--purple-main);
+  letter-spacing: 1px;
+}
+
+.client-logout {
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+
+.client-logout:hover {
+  color: var(--purple-main);
+}
+
+/* CONTENT */
+.client-content {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+/* BOTTOM NAV */
+.client-nav {
+  position: relative;
+  height: 64px;
+  background-color: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+/* Links */
+.client-link {
+  position: relative;
+  z-index: 2;
+  text-decoration: none;
+  color: #6b7280;
+  font-size: 0.85rem;
+  flex: 1;
+  text-align: center;
+}
+
+/* Activo */
+.client-link.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* INDICADOR MORADO */
+.client-nav-indicator {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  width: 25%;
+  height: 3rem;
+  background-color: var(--purple-main);
+  border-radius: 999px;
+  transition: transform 0.3s ease;
+  z-index: 1;
+}
+
+/* Posiciones según ruta */
+.client-link:nth-child(1).active ~ .client-nav-indicator {
+  transform: translateX(0%);
+}
+
+.client-link:nth-child(2).active ~ .client-nav-indicator {
+  transform: translateX(100%);
+}
+
+.client-link:nth-child(3).active ~ .client-nav-indicator {
+  transform: translateX(200%);
+}
+
+.client-link:nth-child(4).active ~ .client-nav-indicator {
+  transform: translateX(300%);
+}

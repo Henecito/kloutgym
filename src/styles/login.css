@@ -1,0 +1,74 @@
+.login-wrapper {
+  background-color: var(--bg-light);
+}
+
+.login-panel {
+  background-color: var(--bg-light);
+}
+
+.login-hero {
+  background-size: cover;
+  background-position: center;
+}
+
+/* Botón principal KLOUT */
+.btn.btn-primary {
+  background-color: var(--purple-main);
+  border-color: var(--purple-main);
+  color: #ffffff;
+}
+
+/* Hover / focus / active */
+.btn.btn-primary:hover,
+.btn.btn-primary:focus,
+.btn.btn-primary:active {
+  background-color: var(--purple-dark);
+  border-color: var(--purple-dark);
+  color: #ffffff;
+}
+
+/* Estado disabled (Bootstrap lo pisa si no lo defines) */
+.btn.btn-primary:disabled,
+.btn.btn-primary.disabled {
+  background-color: var(--purple-main);
+  border-color: var(--purple-main);
+  opacity: 0.65;
+}
+
+
+/* Inputs */
+.form-control {
+  border-radius: 0.75rem;
+}
+
+.form-control:focus {
+  border-color: var(--purple-main);
+  box-shadow: 0 0 0 0.2rem rgba(123, 44, 191, 0.25);
+}
+
+/* Card */
+.card {
+  background-color: #ffffff;
+}
+
+/* Títulos */
+h2,
+h4 {
+  color: var(--text-dark);
+}
+
+.login-hero {
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+/* Título principal */
+.login-hero-title {
+  color: var(--purple-light);
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 0.75rem;
+}
+
+

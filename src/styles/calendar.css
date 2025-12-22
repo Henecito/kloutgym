@@ -1,0 +1,64 @@
+/* ================================
+   CALENDAR – APP STYLE
+================================ */
+
+/* Contenedor */
+.react-calendar {
+  border: none;
+  width: 100%;
+  max-width: 360px;
+  font-family: inherit;
+  background: transparent;
+}
+
+/* Header mes / año */
+.react-calendar__navigation {
+  margin-bottom: 0.75rem;
+}
+
+.react-calendar__navigation button {
+  font-weight: 600;
+  color: #111827;
+  border-radius: 12px;
+  background: transparent;
+}
+
+.react-calendar__navigation button:disabled {
+  background: transparent;
+  opacity: 0.4;
+}
+
+/* Días */
+.react-calendar__tile {
+  height: 44px;
+  max-width: 44px;
+  border-radius: 999px; /* 🔥 círculo */
+  margin: 2px auto;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+/* Hover */
+.react-calendar__tile:enabled:hover {
+  background: rgba(123, 44, 191, 0.12);
+}
+
+/* Hoy */
+.react-calendar__tile--now {
+  background: rgba(123, 44, 191, 0.15);
+  color: #5a189a;
+  font-weight: 600;
+}
+
+/* Día seleccionado */
+.react-calendar__tile--active {
+  background: #7b2cbf !important;
+  color: #ffffff !important;
+}
+
+/* Fechas deshabilitadas */
+.react-calendar__tile:disabled {
+  color: #cbd5e1;
+  background: transparent;
+  cursor: not-allowed;
+}

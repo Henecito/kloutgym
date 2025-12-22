@@ -1,0 +1,20 @@
+:root {
+  --black: #000000;
+  --white: #ffffff;
+
+  --purple-main: #7b2cbf;
+  --purple-dark: #5a189a;
+  --purple-light: #9d4edd;
+
+  --pink-main: #f72585;
+
+  --gray-light: #f1f1f1;
+  --gray-medium: #cfcfcf;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background-color: var(--white);
+  color: var(--black);
+}
