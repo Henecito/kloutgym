@@ -1,18 +1,24 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "../auth/Login";
-import AdminLayout from "../layouts/AdminLayout";
+import ChangePassword from "../auth/ChangePassword";
 import ProtectedRoute from "./ProtectedRoute";
+
+/* ADMIN */
+import AdminLayout from "../layouts/AdminLayout";
 import Dashboard from "../pages/admin/Dashboard";
 import Clients from "../pages/admin/Clients";
 import Trainers from "../pages/admin/Trainers";
 import Attendance from "../pages/admin/Attendance";
 import Payments from "../pages/admin/Payments";
-import ChangePassword from "../auth/ChangePassword";
+
+/* TRAINER */
 import TrainerLayout from "../layouts/TrainerLayout";
 import TrainerDashboard from "../pages/trainer/Dashboard";
 import Sessions from "../pages/trainer/Sessions";
 import TrainerClients from "../pages/trainer/Clients";
 import TrainerProfile from "../pages/trainer/Profile";
+
+/* CLIENT */
 import ClientLayout from "../layouts/ClientLayout";
 import ClientHome from "../pages/client/Home";
 import ClientBook from "../pages/client/Book";
@@ -25,7 +31,7 @@ export default function Router() {
       {/* LOGIN */}
       <Route path="/login" element={<Login />} />
 
-      {/* CAMBIAR PASSWORD (solo sesión, sin rol) */}
+      {/* CAMBIO DE PASSWORD (solo sesión válida) */}
       <Route element={<ProtectedRoute />}>
         <Route path="/cambiar-password" element={<ChangePassword />} />
       </Route>
@@ -60,6 +66,9 @@ export default function Router() {
           <Route path="perfil" element={<ClientProfile />} />
         </Route>
       </Route>
+
+      {/* 🔑 FALLBACK PARA GITHUB PAGES */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
