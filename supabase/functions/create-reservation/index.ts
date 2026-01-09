@@ -73,7 +73,45 @@ serve(async (req) => {
     }
 
     /* =========================
-       3️⃣ VALIDAR FECHA (NO PASADA)
+       3️⃣ SOLO UNA RESERVA ACTIVA TOTAL
+    ========================= */
+    const { count: activeTotal } = await supabase
+      .from("reservations")
+      .select("*", { count: "exact", head: true })
+      .eq("client_id", user.id)
+      .eq("status", "active");
+
+    if ((activeTotal ?? 0) > 0) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Ya tienes una reserva activa. Finalízala antes de agendar otra.",
+        }),
+        { status: 409, headers: corsHeaders }
+      );
+    }
+
+    /* =========================
+       4️⃣ SOLO UNA RESERVA ACTIVA POR DÍA
+    ========================= */
+    const { count: activeSameDay } = await supabase
+      .from("reservations")
+      .select("*", { count: "exact", head: true })
+      .eq("client_id", user.id)
+      .eq("reservation_date", reservation_date)
+      .eq("status", "active");
+
+    if ((activeSameDay ?? 0) > 0) {
+      return new Response(
+        JSON.stringify({
+          error: "Ya tienes una reserva activa para este día.",
+        }),
+        { status: 409, headers: corsHeaders }
+      );
+    }
+
+    /* =========================
+       5️⃣ VALIDAR FECHA (NO PASADA)
     ========================= */
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -89,7 +127,7 @@ serve(async (req) => {
     }
 
     /* =========================
-       4️⃣ VALIDAR HORARIO
+       6️⃣ VALIDAR HORARIO
     ========================= */
     const [hour, minute] = reservation_time.split(":").map(Number);
     const minutes = hour * 60 + minute;
@@ -111,27 +149,7 @@ serve(async (req) => {
     }
 
     /* =========================
-       4.5️⃣ EVITAR DUPLICADO CLIENTE
-    ========================= */
-    const { count: userCount } = await supabase
-      .from("reservations")
-      .select("*", { count: "exact", head: true })
-      .eq("client_id", user.id)
-      .eq("reservation_date", reservation_date)
-      .eq("reservation_time", reservation_time)
-      .eq("status", "active");
-
-    if ((userCount ?? 0) > 0) {
-      return new Response(
-        JSON.stringify({
-          error: "Ya tienes una reserva activa en este horario",
-        }),
-        { status: 409, headers: corsHeaders }
-      );
-    }
-
-    /* =========================
-       5️⃣ CUPO MÁXIMO (5 PERSONAS)
+       7️⃣ CUPO MÁXIMO (5 PERSONAS)
     ========================= */
     const { count } = await supabase
       .from("reservations")
@@ -148,7 +166,7 @@ serve(async (req) => {
     }
 
     /* =========================
-       6️⃣ INSERTAR RESERVA
+       8️⃣ INSERTAR RESERVA
     ========================= */
     const { error: insertError } = await supabase
       .from("reservations")
@@ -167,7 +185,6 @@ serve(async (req) => {
       JSON.stringify({ success: true }),
       { status: 200, headers: corsHeaders }
     );
-
   } catch (error) {
     console.error("CREATE RESERVATION ERROR:", error);
 
