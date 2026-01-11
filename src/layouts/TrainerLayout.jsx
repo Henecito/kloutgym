@@ -52,14 +52,6 @@ export default function TrainerLayout() {
           </NavLink>
 
           <NavLink
-            to="/trainer/alumnos"
-            className="sidebar-link"
-            onClick={() => setSidebarOpen(false)}
-          >
-            Alumnos
-          </NavLink>
-
-          <NavLink
             to="/trainer/perfil"
             className="sidebar-link"
             onClick={() => setSidebarOpen(false)}

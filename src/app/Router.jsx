@@ -15,7 +15,6 @@ import Payments from "../pages/admin/Payments";
 import TrainerLayout from "../layouts/TrainerLayout";
 import TrainerDashboard from "../pages/trainer/Dashboard";
 import Sessions from "../pages/trainer/Sessions";
-import TrainerClients from "../pages/trainer/Clients";
 import TrainerProfile from "../pages/trainer/Profile";
 
 /* CLIENT */
@@ -52,7 +51,6 @@ export default function Router() {
         <Route path="/trainer" element={<TrainerLayout />}>
           <Route index element={<TrainerDashboard />} />
           <Route path="sesiones" element={<Sessions />} />
-          <Route path="alumnos" element={<TrainerClients />} />
           <Route path="perfil" element={<TrainerProfile />} />
         </Route>
       </Route>
