@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { supabase } from "../../services/supabase";
+import { finishReservation } from "../../services/reservations.service";
 
 /* =========================
    HELPERS
@@ -35,6 +37,7 @@ export default function Sessions() {
         reservation_date,
         reservation_time,
         status,
+        attended,
         profiles (
           name,
           lastname,
@@ -56,15 +59,38 @@ export default function Sessions() {
   }, [date]);
 
   /* =========================
-     MARCAR COMO FINALIZADA
+     FINALIZAR SESIÓN (EDGE)
   ========================== */
-  const markAsFinished = async (id) => {
-    await supabase
-      .from("reservations")
-      .update({ status: "finished" })
-      .eq("id", id);
+  const finishSession = async (reservationId) => {
+    const confirm = await Swal.fire({
+      title: "¿Finalizar sesión?",
+      text: "Esto marcará la asistencia del cliente.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, finalizar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#198754",
+    });
 
-    loadAgenda(); // refresca vista
+    if (!confirm.isConfirmed) return;
+
+    try {
+      await finishReservation(reservationId);
+
+      await loadAgenda();
+
+      Swal.fire(
+        "Listo",
+        "Sesión finalizada y asistencia registrada",
+        "success"
+      );
+    } catch (err) {
+      Swal.fire(
+        "Error",
+        err.message || "No se pudo finalizar la sesión",
+        "error"
+      );
+    }
   };
 
   return (
@@ -133,13 +159,17 @@ export default function Sessions() {
                   {r.status === "active" ? (
                     <button
                       className="btn btn-sm btn-success"
-                      onClick={() => markAsFinished(r.id)}
+                      onClick={() => finishSession(r.id)}
                     >
-                      Marcar realizada
+                      Finalizar sesión
                     </button>
                   ) : (
-                    <span className="badge bg-dark">
-                      Finalizada
+                    <span
+                      className={`badge ${
+                        r.attended ? "bg-success" : "bg-secondary"
+                      }`}
+                    >
+                      {r.attended ? "Asistió" : "No asistió"}
                     </span>
                   )}
                 </div>
