@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Swal from "sweetalert2";
 import { useAuth } from "../../context/AuthContext";
 import { useReservations } from "../../context/ReservationsContext";
@@ -38,12 +38,51 @@ export default function ClientSessions() {
   const [newTime, setNewTime] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const intervalRef = useRef(null);
+
   /* =========================
-     LOAD
+     AUTO LOAD + AUTO REFRESH
   ========================== */
   useEffect(() => {
-    if (user) loadReservations(user.id);
+    if (!user) return;
+
+    loadReservations(user.id);
+
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    intervalRef.current = setInterval(() => {
+      loadReservations(user.id, true);
+    }, 15000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [user, loadReservations]);
+
+  /* =========================
+     SEPARACIÓN DE RESERVAS
+  ========================== */
+  const { upcoming, past } = useMemo(() => {
+    const today = new Date();
+
+    const upcoming = [];
+    const past = [];
+
+    reservations.forEach((r) => {
+      const dateTime = new Date(`${r.reservation_date}T${r.reservation_time}`);
+
+      if (r.status === "active" && dateTime >= today) {
+        upcoming.push(r);
+      } else {
+        past.push(r);
+      }
+    });
+
+    return { upcoming, past };
+  }, [reservations]);
 
   /* =========================
      MODAL CONTROL
@@ -88,6 +127,9 @@ export default function ClientSessions() {
     }
   };
 
+  /* =========================
+     RENDER
+  ========================== */
   return (
     <div className="container-fluid">
       <div className="row justify-content-center">
@@ -95,7 +137,7 @@ export default function ClientSessions() {
 
           {/* HEADER */}
           <div className="mb-4 d-flex justify-content-between align-items-center">
-            <h4 className="mb-0">Mis reservas</h4>
+            <h4 className="mb-0">Mis sesiones</h4>
 
             <button
               className="btn btn-sm btn-outline-secondary"
@@ -105,57 +147,45 @@ export default function ClientSessions() {
             </button>
           </div>
 
-          {/* LOADING */}
           {loading && (
             <div className="text-center py-5 text-muted">
               Cargando reservas...
             </div>
           )}
 
-          {/* EMPTY */}
-          {!loading && reservations.length === 0 && (
-            <div className="card border-0 shadow-sm rounded-4">
-              <div className="card-body text-center text-muted py-5">
-                Aún no tienes reservas realizadas
-              </div>
-            </div>
-          )}
+          {/* =====================
+               PRÓXIMAS SESIONES
+          ====================== */}
+          {!loading && (
+            <>
+              <h6 className="mb-3">Próximas sesiones</h6>
 
-          {/* LIST */}
-          {!loading &&
-            reservations.map((r) => (
-              <div
-                key={r.id}
-                className="card border-0 shadow-sm rounded-4 mb-3"
-              >
-                <div className="card-body d-flex justify-content-between align-items-center">
-                  <div>
-                    <p className="mb-1 fw-semibold">
-                      {formatDateCL(r.reservation_date)}
-                    </p>
-                    <p className="mb-0 text-muted small">
-                      ⏰ {r.reservation_time}
-                    </p>
+              {upcoming.length === 0 && (
+                <div className="card border-0 shadow-sm rounded-4 mb-4">
+                  <div className="card-body text-center text-muted py-4">
+                    No tienes sesiones próximas
                   </div>
+                </div>
+              )}
 
-                  <div className="d-flex flex-column align-items-end gap-2">
-                    <span
-                      className={`badge ${
-                        r.status === "active"
-                          ? "bg-success"
-                          : r.status === "finished"
-                          ? "bg-dark"
-                          : "bg-secondary"
-                      }`}
-                    >
-                      {r.status === "active"
-                        ? "Activa"
-                        : r.status === "finished"
-                        ? "Finalizada"
-                        : "Cancelada"}
-                    </span>
+              {upcoming.map((r) => (
+                <div
+                  key={r.id}
+                  className="card border-0 shadow-sm rounded-4 mb-3"
+                >
+                  <div className="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                      <p className="mb-1 fw-semibold">
+                        {formatDateCL(r.reservation_date)}
+                      </p>
+                      <p className="mb-0 text-muted small">
+                        ⏰ {r.reservation_time}
+                      </p>
+                    </div>
 
-                    {r.status === "active" && (
+                    <div className="d-flex flex-column align-items-end gap-2">
+                      <span className="badge bg-success">Activa</span>
+
                       <span
                         role="button"
                         className="text-primary small fw-semibold"
@@ -164,11 +194,49 @@ export default function ClientSessions() {
                       >
                         Cambiar horario
                       </span>
-                    )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </>
+          )}
+
+          {/* =====================
+                HISTORIAL
+          ====================== */}
+          {!loading && past.length > 0 && (
+            <>
+              <h6 className="mt-4 mb-3">Sesiones pasadas</h6>
+
+              {past.map((r) => (
+                <div
+                  key={r.id}
+                  className="card border-0 shadow-sm rounded-4 mb-3 opacity-75"
+                >
+                  <div className="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                      <p className="mb-1 fw-semibold">
+                        {formatDateCL(r.reservation_date)}
+                      </p>
+                      <p className="mb-0 text-muted small">
+                        ⏰ {r.reservation_time}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`badge ${
+                        r.status === "finished"
+                          ? "bg-dark"
+                          : "bg-secondary"
+                      }`}
+                    >
+                      {r.status === "finished" ? "Finalizada" : "Cancelada"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
 

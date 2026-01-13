@@ -12,7 +12,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // ✅ PRE-FLIGHT
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -73,6 +72,65 @@ serve(async (req) => {
     }
 
     /* =========================
+       🔒 VALIDAR PLAN ACTIVO
+    ========================= */
+    const { data: plan, error: planError } = await supabase
+      .from("client_plans")
+      .select(`
+        id,
+        start_date,
+        end_date,
+        sessions_total,
+        sessions_used,
+        status
+      `)
+      .eq("client_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (planError || !plan) {
+      return new Response(
+        JSON.stringify({ error: "No tienes un plan activo" }),
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const planEnd = new Date(plan.end_date);
+    planEnd.setHours(0, 0, 0, 0);
+
+    if (planEnd < today) {
+      return new Response(
+        JSON.stringify({ error: "Tu plan está vencido" }),
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    if (plan.sessions_used >= plan.sessions_total) {
+      return new Response(
+        JSON.stringify({ error: "No te quedan sesiones disponibles" }),
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    const resDate = new Date(reservation_date);
+    resDate.setHours(0, 0, 0, 0);
+
+    const planStart = new Date(plan.start_date);
+    planStart.setHours(0, 0, 0, 0);
+
+    if (resDate < planStart || resDate > planEnd) {
+      return new Response(
+        JSON.stringify({
+          error: "La fecha está fuera del rango de tu plan",
+        }),
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    /* =========================
        3️⃣ SOLO UNA RESERVA ACTIVA TOTAL
     ========================= */
     const { count: activeTotal } = await supabase
@@ -113,9 +171,6 @@ serve(async (req) => {
     /* =========================
        5️⃣ VALIDAR FECHA (NO PASADA)
     ========================= */
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const selectedDate = new Date(reservation_date);
     selectedDate.setHours(0, 0, 0, 0);
 
@@ -132,10 +187,10 @@ serve(async (req) => {
     const [hour, minute] = reservation_time.split(":").map(Number);
     const minutes = hour * 60 + minute;
 
-    const AM_START = 8 * 60;        // 08:00
-    const AM_END = 14 * 60;         // 14:00 (no incluido)
-    const PM_START = 18 * 60 + 30;  // 18:30
-    const PM_END = 22 * 60 + 30;    // 22:30
+    const AM_START = 8 * 60;
+    const AM_END = 14 * 60;
+    const PM_START = 18 * 60 + 30;
+    const PM_END = 22 * 60 + 30;
 
     const validHour =
       (minutes >= AM_START && minutes < AM_END) ||
@@ -149,7 +204,7 @@ serve(async (req) => {
     }
 
     /* =========================
-       7️⃣ CUPO MÁXIMO (5 PERSONAS)
+       7️⃣ CUPO MÁXIMO
     ========================= */
     const { count } = await supabase
       .from("reservations")
@@ -177,9 +232,7 @@ serve(async (req) => {
         status: "active",
       });
 
-    if (insertError) {
-      throw insertError;
-    }
+    if (insertError) throw insertError;
 
     return new Response(
       JSON.stringify({ success: true }),

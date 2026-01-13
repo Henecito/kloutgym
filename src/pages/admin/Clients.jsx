@@ -1,30 +1,22 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../services/supabase";
 
-const getPlanStatus = (endDate) => {
-  if (!endDate) return "sin_plan";
-
-  const today = new Date();
-  const end = new Date(endDate);
-
-  return end >= today ? "activo" : "vencido";
-};
-
 export default function Clients() {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingClients, setLoadingClients] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
   const [clients, setClients] = useState([]);
+  const [plans, setPlans] = useState([]);
 
   const [formData, setFormData] = useState({
     name: "",
     lastname: "",
     phone: "",
     email: "",
-    plan: "",
-    sessions_per_month: "",
+    plan_id: "",
     start_date: "",
   });
 
@@ -36,45 +28,39 @@ export default function Clients() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select(
-        "id, name, lastname, email, plan, start_date, end_date, must_change_password"
-      )
+      .select("id, name, lastname, email, must_change_password")
       .eq("role", "client");
 
-    if (!error) {
-      setClients(data || []);
-    }
-
+    if (!error) setClients(data || []);
     setLoadingClients(false);
+  };
+
+  /* =========================
+     FETCH PLANS
+  ========================== */
+  const fetchPlans = async () => {
+    const { data } = await supabase.from("plans").select("id, name");
+    setPlans(data || []);
   };
 
   useEffect(() => {
     fetchClients();
+    fetchPlans();
   }, []);
 
   /* =========================
-     BLOQUEO SCROLL BODY (CLAVE)
+     BLOQUEO SCROLL BODY
   ========================== */
   useEffect(() => {
-    if (showModal) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = showModal ? "hidden" : "";
+    return () => (document.body.style.overflow = "");
   }, [showModal]);
 
   /* =========================
      FORM
   ========================== */
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
@@ -96,26 +82,21 @@ export default function Clients() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({
-            ...formData,
-            sessions_per_month: Number(formData.sessions_per_month),
-          }),
+          body: JSON.stringify(formData),
         }
       );
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Error al crear cliente");
-      }
+      if (!res.ok) throw new Error(data.error || "Error al crear cliente");
 
       setSuccess("Cliente creado correctamente");
 
       setFormData({
         name: "",
+        lastname: "",
+        phone: "",
         email: "",
-        plan: "",
-        sessions_per_month: "",
+        plan_id: "",
         start_date: "",
       });
 
@@ -125,6 +106,7 @@ export default function Clients() {
         setShowModal(false);
         setSuccess(null);
       }, 800);
+
     } catch (err) {
       setError(err.message);
     } finally {
@@ -151,7 +133,7 @@ export default function Clients() {
         </button>
       </div>
 
-      {/* DESKTOP TABLE */}
+      {/* DESKTOP */}
       <div className="card border-0 shadow-sm rounded-4 d-none d-md-block">
         <div className="card-body p-0">
           <table className="table mb-0">
@@ -159,16 +141,14 @@ export default function Clients() {
               <tr>
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Correo</th>
-                <th className="px-4 py-3">Plan</th>
                 <th className="px-4 py-3">Cuenta</th>
-                <th className="px-4 py-3">Vigencia</th>
               </tr>
             </thead>
 
             <tbody>
               {loadingClients && (
                 <tr>
-                  <td colSpan="4" className="text-center py-5 text-muted">
+                  <td colSpan="3" className="text-center py-5 text-muted">
                     Cargando clientes...
                   </td>
                 </tr>
@@ -176,7 +156,7 @@ export default function Clients() {
 
               {!loadingClients && clients.length === 0 && (
                 <tr>
-                  <td colSpan="4" className="text-center py-5 text-muted">
+                  <td colSpan="3" className="text-center py-5 text-muted">
                     No hay clientes registrados aún
                   </td>
                 </tr>
@@ -188,8 +168,6 @@ export default function Clients() {
                     {client.name} {client.lastname}
                   </td>
                   <td className="px-4 py-3">{client.email}</td>
-                  <td className="px-4 py-3">{client.plan}</td>
-                  {/* CUENTA */}
                   <td className="px-4 py-3">
                     {client.must_change_password ? (
                       <span className="badge bg-warning text-dark">
@@ -199,23 +177,6 @@ export default function Clients() {
                       <span className="badge bg-success">Activa</span>
                     )}
                   </td>
-
-                  {/* VIGENCIA */}
-                  <td className="px-4 py-3">
-                    {getPlanStatus(client.end_date) === "activo" && (
-                      <span className="badge bg-primary">
-                        Hasta {client.end_date}
-                      </span>
-                    )}
-
-                    {getPlanStatus(client.end_date) === "vencido" && (
-                      <span className="badge bg-danger">Vencido</span>
-                    )}
-
-                    {!client.end_date && (
-                      <span className="text-muted small">Sin plan</span>
-                    )}
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -223,7 +184,7 @@ export default function Clients() {
         </div>
       </div>
 
-      {/* MOBILE LIST */}
+      {/* MOBILE */}
       <div className="d-block d-md-none">
         {loadingClients && (
           <div className="text-center text-muted py-4">
@@ -242,7 +203,7 @@ export default function Clients() {
                   {client.name} {client.lastname}
                 </h6>
                 <div className="d-flex flex-column gap-1">
-                  <span className="fw-semibold">{client.plan}</span>
+                  <span className="fw-semibold">{client.email}</span>
 
                   <span
                     className={`badge ${
@@ -253,18 +214,6 @@ export default function Clients() {
                   >
                     {client.must_change_password ? "No activada" : "Activa"}
                   </span>
-
-                  {getPlanStatus(client.end_date) === "activo" && (
-                    <span className="badge bg-primary align-self-start">
-                      Vigente hasta {client.end_date}
-                    </span>
-                  )}
-
-                  {getPlanStatus(client.end_date) === "vencido" && (
-                    <span className="badge bg-danger align-self-start">
-                      Plan vencido
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -275,7 +224,6 @@ export default function Clients() {
       {showModal && (
         <div className="modal-backdrop-custom">
           <div className="modal-custom">
-            {/* HEADER */}
             <div className="modal-header-custom">
               <button
                 className="btn-close"
@@ -283,9 +231,7 @@ export default function Clients() {
               />
             </div>
 
-            {/* FORM */}
             <form onSubmit={handleSubmit} className="modal-form">
-              {/* BODY */}
               <div className="modal-body-custom">
                 {error && (
                   <div className="alert alert-danger py-2">{error}</div>
@@ -346,30 +292,19 @@ export default function Clients() {
                 <div className="mb-3">
                   <label className="form-label">Plan</label>
                   <select
-                    name="plan"
+                    name="plan_id"
                     className="form-select"
-                    value={formData.plan}
+                    value={formData.plan_id}
                     onChange={handleChange}
                     required
                   >
                     <option value="">Seleccionar plan</option>
-                    <option value="8 sesiones">8 sesiones</option>
-                    <option value="12 sesiones">12 sesiones</option>
-                    <option value="Full">Full</option>
+                    {plans.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
                   </select>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">Sesiones mensuales</label>
-                  <input
-                    type="number"
-                    name="sessions_per_month"
-                    className="form-control"
-                    value={formData.sessions_per_month}
-                    onChange={handleChange}
-                    min="1"
-                    required
-                  />
                 </div>
 
                 <div className="mb-3">
@@ -385,7 +320,6 @@ export default function Clients() {
                 </div>
               </div>
 
-              {/* FOOTER */}
               <div className="modal-footer-custom">
                 <button
                   type="button"

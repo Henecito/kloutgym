@@ -9,12 +9,7 @@ const formatDateCL = (dateString) => {
   if (!dateString) return "—";
 
   const [y, m, d] = dateString.split("-");
-
-  const date = new Date(
-    Number(y),
-    Number(m) - 1,
-    Number(d)
-  );
+  const date = new Date(Number(y), Number(m) - 1, Number(d));
 
   return date.toLocaleDateString("es-CL", {
     weekday: "long",
@@ -28,7 +23,6 @@ const daysUntil = (dateString) => {
   if (!dateString) return null;
 
   const [y, m, d] = dateString.split("-");
-
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -36,6 +30,19 @@ const daysUntil = (dateString) => {
   target.setHours(0, 0, 0, 0);
 
   return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+};
+
+const getPlanExpiryState = (endDate) => {
+  if (!endDate) return null;
+
+  const days = daysUntil(endDate);
+
+  if (days < 0) return { type: "danger", label: "Tu plan ya venció" };
+  if (days === 0) return { type: "danger", label: "Tu plan vence hoy" };
+  if (days <= 7)
+    return { type: "warning", label: `Tu plan vence en ${days} días` };
+
+  return null;
 };
 
 /* =========================
@@ -117,6 +124,22 @@ export default function ClientDashboard() {
       ? `Tu próxima sesión es en ${sessionDays} días`
       : null;
 
+  /* =========================
+     ESTADO SESIONES (%)
+  ========================== */
+  const getSessionState = () => {
+    if (!plan || plan.sessions_total === 0) return "secondary";
+
+    const percentUsed = (plan.sessions_used / plan.sessions_total) * 100;
+
+    if (percentUsed >= 100) return "danger";
+    if (percentUsed >= 70) return "warning";
+    return "success";
+  };
+
+  const state = getSessionState();
+  const planExpiry = plan ? getPlanExpiryState(plan.end_date) : null;
+
   return (
     <div className="container-fluid">
       <div className="row justify-content-center">
@@ -135,6 +158,17 @@ export default function ClientDashboard() {
           </div>
 
           {/* =====================
+              ALERTA VIGENCIA
+          ====================== */}
+          {planExpiry && (
+            <div
+              className={`alert alert-${planExpiry.type} border-0 rounded-4 shadow-sm`}
+            >
+              <strong>Atención:</strong> {planExpiry.label}
+            </div>
+          )}
+
+          {/* =====================
               PLAN
           ====================== */}
           {!plan && (
@@ -148,70 +182,77 @@ export default function ClientDashboard() {
             </div>
           )}
 
-          {plan && (() => {
-            const remaining = plan.sessions_total - plan.sessions_used;
-            const percent = Math.min(
-              100,
-              Math.round((plan.sessions_used / plan.sessions_total) * 100)
-            );
+          {plan &&
+            (() => {
+              const remaining = plan.sessions_total - plan.sessions_used;
+              const percent = Math.min(
+                100,
+                Math.round((plan.sessions_used / plan.sessions_total) * 100)
+              );
 
-            return (
-              <div className="card border-0 shadow-sm rounded-4">
-                <div className="card-body">
+              return (
+                <div className="card border-0 shadow-sm rounded-4">
+                  <div className="card-body">
 
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <h5 className="mb-0">
-                      {plan.plans?.name ?? "Plan activo"}
-                    </h5>
-                    <span className="badge bg-success">Activo</span>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <h5 className="mb-0">
+                        {plan.plans?.name ?? "Plan activo"}
+                      </h5>
+
+                      <span className={`badge bg-${state}`}>
+                        {state === "success" && "Vamos bien"}
+                        {state === "warning" && "Te queda poco"}
+                        {state === "danger" && "Ya no quedan"}
+                      </span>
+                    </div>
+
+                    <p className="text-muted small mb-3">
+                      {formatDateCL(plan.start_date)} —{" "}
+                      {formatDateCL(plan.end_date)}
+                    </p>
+
+                    <div className="mb-2">
+                      <div className="d-flex justify-content-between small mb-1">
+                        <span>Sesiones usadas</span>
+                        <span>{percent}%</span>
+                      </div>
+
+                      <div className="progress" style={{ height: 8 }}>
+                        <div
+                          className={`progress-bar bg-${state}`}
+                          role="progressbar"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="row text-center mt-4">
+                      <div className="col">
+                        <p className="mb-1 fw-semibold fs-4">
+                          {plan.sessions_total}
+                        </p>
+                        <p className="small text-muted mb-0">Totales</p>
+                      </div>
+
+                      <div className="col">
+                        <p className="mb-1 fw-semibold fs-4">
+                          {plan.sessions_used}
+                        </p>
+                        <p className="small text-muted mb-0">Usadas</p>
+                      </div>
+
+                      <div className="col">
+                        <p className={`mb-1 fw-semibold fs-4 text-${state}`}>
+                          {remaining}
+                        </p>
+                        <p className="small text-muted mb-0">Restantes</p>
+                      </div>
+                    </div>
+
                   </div>
-
-                  <p className="text-muted small mb-3">
-                    {formatDateCL(plan.start_date)} — {formatDateCL(plan.end_date)}
-                  </p>
-
-                  <div className="mb-2">
-                    <div className="d-flex justify-content-between small mb-1">
-                      <span>Sesiones usadas</span>
-                      <span>{percent}%</span>
-                    </div>
-
-                    <div className="progress" style={{ height: 8 }}>
-                      <div
-                        className="progress-bar"
-                        role="progressbar"
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="row text-center mt-4">
-                    <div className="col">
-                      <p className="mb-1 fw-semibold fs-4">
-                        {plan.sessions_total}
-                      </p>
-                      <p className="small text-muted mb-0">Totales</p>
-                    </div>
-
-                    <div className="col">
-                      <p className="mb-1 fw-semibold fs-4">
-                        {plan.sessions_used}
-                      </p>
-                      <p className="small text-muted mb-0">Usadas</p>
-                    </div>
-
-                    <div className="col">
-                      <p className="mb-1 fw-semibold fs-4 text-success">
-                        {remaining}
-                      </p>
-                      <p className="small text-muted mb-0">Restantes</p>
-                    </div>
-                  </div>
-
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
           {/* =====================
               PRÓXIMA SESIÓN
@@ -251,3 +292,4 @@ export default function ClientDashboard() {
     </div>
   );
 }
+

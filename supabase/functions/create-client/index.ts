@@ -8,26 +8,19 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // 🔹 CORS preflight (OBLIGATORIO)
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const body = await req.json();
-    const { name, lastname, phone, email, plan, sessions_per_month, start_date } = body;
+    const { name, lastname, phone, email, plan_id, start_date } = body;
 
-    if (!name || !email) {
-      return new Response(
-        JSON.stringify({ error: "Datos incompletos" }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    if (!name || !lastname || !email || !plan_id || !start_date) {
+      return new Response(JSON.stringify({ error: "Datos incompletos" }), {
+        status: 400,
+        headers: corsHeaders,
+      });
     }
 
     const supabaseAdmin = createClient(
@@ -35,7 +28,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 1️⃣ Crear usuario en Auth
+    /* 1️⃣ Crear usuario Auth */
     const { data: userData, error: authError } =
       await supabaseAdmin.auth.admin.createUser({
         email,
@@ -44,21 +37,15 @@ serve(async (req) => {
       });
 
     if (authError || !userData.user) {
-      return new Response(
-        JSON.stringify({ error: authError?.message || "Error Auth" }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return new Response(JSON.stringify({ error: authError?.message || "Auth error" }), {
+        status: 400,
+        headers: corsHeaders,
+      });
     }
 
     const userId = userData.user.id;
 
-    // 2️⃣ Crear perfil cliente
+    /* 2️⃣ Crear perfil */
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .insert({
@@ -68,51 +55,65 @@ serve(async (req) => {
         lastname,
         phone,
         email,
-        plan,
-        sessions_per_month,
-        start_date,
         must_change_password: true,
       });
 
     if (profileError) {
-      return new Response(
-        JSON.stringify({ error: profileError.message }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return new Response(JSON.stringify({ error: profileError.message }), {
+        status: 400,
+        headers: corsHeaders,
+      });
     }
 
-    // ✅ OK
-    return new Response(
-      JSON.stringify({
-        success: true,
-        user_id: userId,
-      }),
-      {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-  } catch (error) {
-    console.error("EDGE ERROR:", error);
+    /* 3️⃣ Obtener plan */
+    const { data: plan, error: planError } = await supabaseAdmin
+      .from("plans")
+      .select("id, sessions_total")
+      .eq("id", plan_id)
+      .single();
 
-    return new Response(
-      JSON.stringify({ error: String(error) }),
-      {
-        status: 500,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    if (planError || !plan) {
+      return new Response(JSON.stringify({ error: "Plan inválido" }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
+    /* 4️⃣ Calcular fechas */
+    const start = new Date(start_date);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 30); // 👈 igual que tu SQL manual
+
+    /* 5️⃣ Crear client_plan */
+    const { error: clientPlanError } = await supabaseAdmin
+      .from("client_plans")
+      .insert({
+        client_id: userId,
+        plan_id: plan.id,
+        start_date,
+        end_date: end.toISOString().split("T")[0],
+        sessions_total: plan.sessions_total,
+        sessions_used: 0,
+        status: "active",
+      });
+
+    if (clientPlanError) {
+      return new Response(JSON.stringify({ error: clientPlanError.message }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: corsHeaders,
+    });
+
+  } catch (err) {
+    console.error("EDGE ERROR:", err);
+    return new Response(JSON.stringify({ error: "Error interno" }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 });
