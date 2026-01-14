@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../services/supabase";
 import Swal from "sweetalert2";
 
+/* =========================
+   VARIABLES DEL SISTEMA
+========================= */
+const SYSTEM_VARS = ["{{name}}", "{{date}}", "{{amount}}"];
+
 export default function Payments() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +35,10 @@ export default function Payments() {
         id,
         end_date,
         status,
+        plans:plan_id (
+          name,
+          price
+        ),
         profiles:client_id (
           id,
           name,
@@ -62,6 +71,17 @@ export default function Payments() {
 
   async function saveMessageTemplate() {
     try {
+      for (const v of SYSTEM_VARS) {
+        if (!messageTemplate.includes(v)) {
+          Swal.fire(
+            "Plantilla inválida",
+            `El mensaje debe contener la variable ${v}`,
+            "warning"
+          );
+          return;
+        }
+      }
+
       setSavingTemplate(true);
 
       const { error } = await supabase
@@ -77,6 +97,18 @@ export default function Payments() {
     } finally {
       setSavingTemplate(false);
     }
+  }
+
+  /* =========================
+     BLOQUEO DE VARIABLES
+  ========================== */
+  function handleTemplateChange(value) {
+    for (const v of SYSTEM_VARS) {
+      if (messageTemplate.includes(v) && !value.includes(v)) {
+        return; // bloquea si intenta borrar una variable
+      }
+    }
+    setMessageTemplate(value);
   }
 
   /* =========================
@@ -157,12 +189,13 @@ export default function Payments() {
     return { color: "success", label: "Activo" };
   }
 
-  function buildWhatsAppLink(client, end_date) {
+  function buildWhatsAppLink(client, end_date, amount) {
     const phone = client.phone?.replace(/\D/g, "");
 
     const msg = messageTemplate
       .replaceAll("{{name}}", client.name)
-      .replaceAll("{{date}}", formatDateCL(end_date));
+      .replaceAll("{{date}}", formatDateCL(end_date))
+      .replaceAll("{{amount}}", amount);
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
   }
@@ -258,8 +291,6 @@ export default function Payments() {
                               color:
                                 d < 0
                                   ? "#ff0000ff"
-                                  : d <= 3
-                                  ? "#ffc925ff"
                                   : d <= 7
                                   ? "#ffc925ff"
                                   : "#198754",
@@ -275,7 +306,8 @@ export default function Payments() {
                             <a
                               href={buildWhatsAppLink(
                                 r.profiles,
-                                r.end_date
+                                r.end_date,
+                                `$${r.plans?.price || 0}`
                               )}
                               target="_blank"
                               rel="noreferrer"
@@ -336,8 +368,12 @@ export default function Payments() {
               <div className="modal-body">
                 <h5 className="fw-bold mb-2">Mensaje automático</h5>
                 <p className="text-muted small mb-3">
-                  Variables disponibles: <b>{"{{name}}"}</b> ·{" "}
-                  <b>{"{{date}}"}</b>
+                  Variables del sistema: <b>{"{{name}}"}</b> ·{" "}
+                  <b>{"{{date}}"}</b> · <b>{"{{amount}}"}</b>
+                  <br />
+                  <span className="text-danger">
+                    Estas variables no pueden ser eliminadas.
+                  </span>
                 </p>
 
                 <textarea
@@ -345,7 +381,7 @@ export default function Payments() {
                   className="form-control mb-3"
                   value={messageTemplate}
                   onChange={(e) =>
-                    setMessageTemplate(e.target.value)
+                    handleTemplateChange(e.target.value)
                   }
                 />
 

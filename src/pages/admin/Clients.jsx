@@ -364,6 +364,57 @@ export default function Clients() {
         </div>
       </div>
 
+      {/* MOBILE */}
+      <div className="d-block d-md-none">
+        {loadingClients && (
+          <div className="text-center py-5 text-muted">
+            Cargando clientes...
+          </div>
+        )}
+
+        {!loadingClients && clients.length === 0 && (
+          <div className="text-center py-5 text-muted">
+            No hay clientes registrados aún
+          </div>
+        )}
+
+        {clients.map((client) => (
+          <div key={client.id} className="card border-0 shadow-sm rounded-4 mb-3">
+            <div className="card-body">
+              <h6 className="mb-1">
+                {client.name} {client.lastname}
+              </h6>
+
+              <p className="mb-1 text-muted small">{client.email}</p>
+
+              <div className="mb-3">
+                {client.must_change_password ? (
+                  <span className="badge bg-warning text-dark">No activada</span>
+                ) : (
+                  <span className="badge bg-success">Activa</span>
+                )}
+              </div>
+
+              <div className="d-flex gap-2">
+                <button
+                  className="btn btn-sm btn-outline-primary w-100"
+                  onClick={() => openEditModal(client)}
+                >
+                  Editar
+                </button>
+
+                <button
+                  className="btn btn-sm btn-outline-danger w-100"
+                  onClick={() => openPlanModal(client)}
+                >
+                  Cambiar Plan
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* MODALES */}
       {showCreateModal && (
         <CreateModal
@@ -402,16 +453,10 @@ export default function Clients() {
 }
 
 /* =========================
-   MODAL CREAR
+   MODALES E INPUTS
 ========================= */
-function CreateModal({
-  onClose,
-  onSubmit,
-  loading,
-  formData,
-  handleChange,
-  plans,
-}) {
+
+function CreateModal({ onClose, onSubmit, loading, formData, handleChange, plans }) {
   return (
     <ModalBase title="Nuevo cliente" onClose={onClose} onSubmit={onSubmit} loading={loading}>
       <Input label="Nombre" name="name" value={formData.name} onChange={handleChange} />
@@ -421,18 +466,10 @@ function CreateModal({
 
       <div className="mb-3">
         <label className="form-label">Plan</label>
-        <select
-          name="plan_id"
-          className="form-select"
-          value={formData.plan_id}
-          onChange={handleChange}
-          required
-        >
+        <select name="plan_id" className="form-select" value={formData.plan_id} onChange={handleChange}>
           <option value="">Seleccionar plan</option>
           {plans.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
+            <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
       </div>
@@ -442,16 +479,7 @@ function CreateModal({
   );
 }
 
-/* =========================
-   MODAL EDITAR PERFIL
-========================= */
-function EditModal({
-  onClose,
-  onSubmit,
-  loading,
-  formData,
-  handleChange,
-}) {
+function EditModal({ onClose, onSubmit, loading, formData, handleChange }) {
   return (
     <ModalBase title="Editar cliente" onClose={onClose} onSubmit={onSubmit} loading={loading}>
       <Input label="Nombre" name="name" value={formData.name} onChange={handleChange} />
@@ -462,68 +490,29 @@ function EditModal({
   );
 }
 
-/* =========================
-   MODAL CAMBIAR PLAN
-========================= */
-function ChangePlanModal({
-  onClose,
-  loading,
-  client,
-  plans,
-  selectedPlan,
-  setSelectedPlan,
-  onChangePlan,
-}) {
+function ChangePlanModal({ onClose, loading, client, plans, selectedPlan, setSelectedPlan, onChangePlan }) {
   return (
-    <ModalBase
-      title="Cambiar plan"
-      onClose={onClose}
-      onSubmit={(e) => e.preventDefault()}
-      loading={loading}
-      showSubmit={false}
-    >
+    <ModalBase title="Cambiar plan" onClose={onClose} onSubmit={(e) => e.preventDefault()} loading={loading} showSubmit={false}>
       <p className="mb-2">
         Cliente: <b>{client?.name} {client?.lastname}</b>
       </p>
 
       <label className="form-label">Nuevo plan</label>
-      <select
-        className="form-select mb-3"
-        value={selectedPlan}
-        onChange={(e) => setSelectedPlan(e.target.value)}
-      >
+      <select className="form-select mb-3" value={selectedPlan} onChange={(e) => setSelectedPlan(e.target.value)}>
         <option value="">Seleccionar plan</option>
         {plans.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
+          <option key={p.id} value={p.id}>{p.name}</option>
         ))}
       </select>
 
-      <button
-        type="button"
-        className="btn btn-danger w-100"
-        disabled={loading || !selectedPlan}
-        onClick={onChangePlan}
-      >
+      <button type="button" className="btn btn-danger w-100" disabled={loading || !selectedPlan} onClick={onChangePlan}>
         Cambiar plan
       </button>
     </ModalBase>
   );
 }
 
-/* =========================
-   BASE MODAL
-========================= */
-function ModalBase({
-  title,
-  onClose,
-  onSubmit,
-  loading,
-  children,
-  showSubmit = true,
-  submitText = "Guardar",
-}) {
+function ModalBase({ title, onClose, onSubmit, loading, children, showSubmit = true, submitText = "Guardar" }) {
   return (
     <div className="modal-backdrop-custom">
       <div className="modal-custom">
@@ -552,20 +541,11 @@ function ModalBase({
   );
 }
 
-/* =========================
-   INPUT
-========================= */
 function Input({ label, name, value, onChange, type = "text" }) {
   return (
     <div className="mb-3">
       <label className="form-label">{label}</label>
-      <input
-        type={type}
-        name={name}
-        className="form-control"
-        value={value}
-        onChange={onChange}
-      />
+      <input type={type} name={name} className="form-control" value={value} onChange={onChange} />
     </div>
   );
 }
