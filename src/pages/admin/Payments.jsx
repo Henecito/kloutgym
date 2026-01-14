@@ -1,20 +1,32 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../services/supabase";
+import Swal from "sweetalert2";
 
 export default function Payments() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [messageTemplate, setMessageTemplate] = useState("");
+  const [showEditor, setShowEditor] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  const [renewingId, setRenewingId] = useState(null);
+
   useEffect(() => {
     loadPayments();
+    loadMessageTemplate();
   }, []);
 
+  /* =========================
+     CARGAR CLIENTES
+  ========================== */
   async function loadPayments() {
     setLoading(true);
 
     const { data, error } = await supabase
       .from("client_plans")
-      .select(`
+      .select(
+        `
         id,
         end_date,
         status,
@@ -24,145 +36,241 @@ export default function Payments() {
           lastname,
           phone
         )
-      `)
+      `
+      )
       .eq("status", "active")
       .order("end_date", { ascending: true });
 
-    if (error) {
-      console.error("PAYMENTS ERROR:", error);
-    } else {
-      setRows(data || []);
-    }
+    if (!error) setRows(data || []);
+    else console.error("PAYMENTS ERROR:", error);
 
     setLoading(false);
   }
 
   /* =========================
-     FECHAS CORRECTAS (SIN UTC)
+     MENSAJE (SUPABASE)
+  ========================== */
+  async function loadMessageTemplate() {
+    const { data, error } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "payment_message")
+      .single();
+
+    if (!error && data) setMessageTemplate(data.value);
+  }
+
+  async function saveMessageTemplate() {
+    try {
+      setSavingTemplate(true);
+
+      const { error } = await supabase
+        .from("system_settings")
+        .update({ value: messageTemplate })
+        .eq("key", "payment_message");
+
+      if (error) throw error;
+
+      setShowEditor(false);
+    } catch (e) {
+      Swal.fire("Error", "Error guardando mensaje", "error");
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
+  /* =========================
+     EDGE FUNCTION RENEW
+  ========================== */
+  async function renewPlan(client_plan_id, clientName) {
+    const confirm = await Swal.fire({
+      title: "Confirmar renovación",
+      html: `¿Confirmas la renovación del plan de <b>${clientName}</b>?<br/>Se reiniciarán las sesiones y se sumarán 30 días.`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, renovar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc3545",
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      setRenewingId(client_plan_id);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const res = await fetch(
+        `${supabase.supabaseUrl}/functions/v1/renew-plan`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ client_plan_id }),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      await loadPayments();
+
+      Swal.fire("Listo", "Plan renovado correctamente", "success");
+    } catch (e) {
+      console.error(e);
+      Swal.fire("Error", "No se pudo renovar el plan", "error");
+    } finally {
+      setRenewingId(null);
+    }
+  }
+
+  /* =========================
+     HELPERS
   ========================== */
   function formatDateCL(dateString) {
     if (!dateString) return "—";
-
     const [y, m, d] = dateString.split("-");
-    const date = new Date(Number(y), Number(m) - 1, Number(d));
-
-    return date.toLocaleDateString("es-CL");
+    return new Date(y, m - 1, d).toLocaleDateString("es-CL", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   }
 
   function daysLeft(dateString) {
-    if (!dateString) return 0;
-
     const [y, m, d] = dateString.split("-");
-
-    const end = new Date(Number(y), Number(m) - 1, Number(d));
+    const end = new Date(y, m - 1, d);
     const today = new Date();
-
     end.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
+    return Math.round((end - today) / 86400000);
+  }
 
-    const diffMs = end.getTime() - today.getTime();
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-    return diffDays;
+  function getBadge(days) {
+    if (days < 0) return { color: "danger", label: "Vencido" };
+    if (days <= 3) return { color: "warning", label: "Urgente" };
+    if (days <= 7) return { color: "warning", label: "Por vencer" };
+    return { color: "success", label: "Activo" };
   }
 
   function buildWhatsAppLink(client, end_date) {
     const phone = client.phone?.replace(/\D/g, "");
 
-    const message = `Hola ${client.name}, te escribimos desde Klout Gym 💪
+    const msg = messageTemplate
+      .replaceAll("{{name}}", client.name)
+      .replaceAll("{{date}}", formatDateCL(end_date));
 
-Tu plan vence el ${formatDateCL(end_date)}.
-
-Para mantener tu cupo activo, recuerda realizar el pago correspondiente.
-
-Datos de pago:
-👉 Banco: XXXX  
-👉 Cuenta: XXXXXXXX  
-👉 Nombre: XXXXX  
-👉 Monto: $_____
-
-Cualquier duda nos comentas 🙌`;
-
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
   }
 
   /* =========================
      RENDER
   ========================== */
   return (
-    <div>
+    <div className="container-fluid px-0">
       {/* HEADER */}
-      <div className="mb-4">
-        <h2 className="mb-1">Pagos</h2>
-        <p className="text-muted mb-0">
-          Recordatorios de pago a clientes
-        </p>
+      <div className="d-flex justify-content-center mb-4">
+        <div
+          className="w-100 px-4 py-4 text-white"
+          style={{
+            maxWidth: 900,
+            background: "linear-gradient(135deg, #6f42c1, #8b5cf6)",
+            borderRadius: 24,
+          }}
+        >
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <h4 className="fw-bold mb-1">Control de pagos</h4>
+              <p className="mb-0 opacity-75 small">
+                Recordatorios de renovación
+              </p>
+            </div>
+
+            <button
+              className="btn btn-light btn-sm rounded-pill"
+              onClick={() => setShowEditor(true)}
+            >
+              Editar mensaje
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* CARD */}
-      <div className="card border-0 shadow-sm rounded-4">
-        <div className="card-body p-0">
-
+      <div className="row justify-content-center">
+        <div className="col-12 col-xl-9">
           {loading && (
             <div className="text-center text-muted py-5">
               Cargando pagos...
             </div>
           )}
 
-          {!loading && rows.length === 0 && (
-            <div className="text-center text-muted py-5">
-              No hay clientes activos
-            </div>
-          )}
+          {!loading && (
+            <div className="row g-4">
+              {rows.map((r) => {
+                const d = daysLeft(r.end_date);
+                const badge = getBadge(d);
+                const isExpired = d < 0;
 
-          {!loading && rows.length > 0 && (
-            <div className="table-responsive">
-              <table className="table mb-0 align-middle">
-                <thead className="table-light">
-                  <tr>
-                    <th className="px-4 py-3">Cliente</th>
-                    <th className="px-4 py-3">Teléfono</th>
-                    <th className="px-4 py-3">Vence</th>
-                    <th className="px-4 py-3 text-center">Días</th>
-                    <th className="px-4 py-3 text-end">Acción</th>
-                  </tr>
-                </thead>
+                return (
+                  <div key={r.id} className="col-12 col-md-6 col-lg-4">
+                    <div className="card border-0 shadow-sm rounded-5 h-100">
+                      <div className="card-body p-4 d-flex flex-column justify-content-between">
+                        <div>
+                          <div className="d-flex justify-content-between mb-3">
+                            <div>
+                              <h6 className="fw-semibold mb-0">
+                                {r.profiles.name} {r.profiles.lastname}
+                              </h6>
+                              <span className="text-muted small">
+                                {r.profiles.phone || "Sin teléfono"}
+                              </span>
+                            </div>
 
-                <tbody>
-                  {rows.map((r) => {
-                    const dLeft = daysLeft(r.end_date);
+                            <span
+                              className={`badge rounded-pill bg-${badge.color}`}
+                              style={{
+                                fontSize: "0.7rem",
+                                padding: "5px 10px",
+                                fontWeight: 600,
+                                letterSpacing: ".3px",
+                                alignSelf: "flex-start",
+                              }}
+                            >
+                              {badge.label}
+                            </span>
+                          </div>
 
-                    return (
-                      <tr key={r.id}>
-                        <td className="px-4 py-3">
-                          {r.profiles.name} {r.profiles.lastname}
-                        </td>
+                          <div className="border rounded-4 p-3 mb-2">
+                            <small className="text-muted">Vence el</small>
+                            <div className="fw-semibold">
+                              {formatDateCL(r.end_date)}
+                            </div>
+                          </div>
 
-                        <td className="px-4 py-3">
-                          {r.profiles.phone || "—"}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          {formatDateCL(r.end_date)}
-                        </td>
-
-                        <td className="px-4 py-3 text-center">
-                          <span
-                            className={`badge ${
-                              dLeft < 0
-                                ? "bg-secondary"
-                                : dLeft <= 3
-                                ? "bg-danger"
-                                : dLeft <= 7
-                                ? "bg-warning text-dark"
-                                : "bg-success"
-                            }`}
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: "0.9rem",
+                              color:
+                                d < 0
+                                  ? "#ff0000ff"
+                                  : d <= 3
+                                  ? "#ffc925ff"
+                                  : d <= 7
+                                  ? "#ffc925ff"
+                                  : "#198754",
+                            }}
                           >
-                            {dLeft < 0 ? "Vencido" : `${dLeft} días`}
-                          </span>
-                        </td>
+                            {d < 0 ? "Plan vencido" : `${d} días restantes`}
+                          </div>
+                        </div>
 
-                        <td className="px-4 py-3 text-end">
+                        <div className="mt-4 d-flex flex-column gap-2">
+                          {/* WHATSAPP */}
                           {r.profiles.phone ? (
                             <a
                               href={buildWhatsAppLink(
@@ -171,26 +279,99 @@ Cualquier duda nos comentas 🙌`;
                               )}
                               target="_blank"
                               rel="noreferrer"
-                              className="btn btn-sm btn-success"
+                              className="btn btn-success w-100 rounded-pill fw-semibold d-flex align-items-center justify-content-center gap-2"
                             >
-                              WhatsApp
+                              <i className="fa-brands fa-whatsapp fs-5"></i>
+                              Enviar WhatsApp
                             </a>
                           ) : (
-                            <span className="text-muted small">
-                              sin teléfono
-                            </span>
+                            <button
+                              className="btn btn-outline-secondary w-100 rounded-pill"
+                              disabled
+                            >
+                              Sin teléfono
+                            </button>
                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+
+                          {/* RENOVAR PLAN */}
+                          <button
+                            disabled={!isExpired || renewingId === r.id}
+                            className={`btn w-100 rounded-pill fw-semibold ${
+                              isExpired
+                                ? "btn-danger"
+                                : "btn-outline-secondary"
+                            }`}
+                            onClick={() =>
+                              renewPlan(
+                                r.id,
+                                `${r.profiles.name} ${r.profiles.lastname}`
+                              )
+                            }
+                          >
+                            {renewingId === r.id
+                              ? "Renovando..."
+                              : isExpired
+                              ? "Renovar plan vencido"
+                              : "Aún activo"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
-
         </div>
       </div>
+
+      {/* MODAL EDITOR */}
+      {showEditor && (
+        <div
+          className="modal fade show d-block"
+          style={{ background: "rgba(0,0,0,.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content rounded-4">
+              <div className="modal-body">
+                <h5 className="fw-bold mb-2">Mensaje automático</h5>
+                <p className="text-muted small mb-3">
+                  Variables disponibles: <b>{"{{name}}"}</b> ·{" "}
+                  <b>{"{{date}}"}</b>
+                </p>
+
+                <textarea
+                  rows={10}
+                  className="form-control mb-3"
+                  value={messageTemplate}
+                  onChange={(e) =>
+                    setMessageTemplate(e.target.value)
+                  }
+                />
+
+                <div className="d-flex gap-2">
+                  <button
+                    className="btn btn-outline-secondary w-50"
+                    onClick={() => setShowEditor(false)}
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    className="btn btn-primary w-50"
+                    disabled={savingTemplate}
+                    onClick={saveMessageTemplate}
+                  >
+                    {savingTemplate
+                      ? "Guardando..."
+                      : "Guardar mensaje"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

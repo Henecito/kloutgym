@@ -28,9 +28,8 @@ export default function ClientProfile() {
         .eq("status", "active")
         .maybeSingle();
 
-      if (!error) {
-        setPlan(data);
-      } else {
+      if (!error) setPlan(data);
+      else {
         console.error("Error loading plan:", error);
         setPlan(null);
       }
@@ -42,7 +41,7 @@ export default function ClientProfile() {
   }, [profile]);
 
   if (loading || loadingPlan) {
-    return <div className="text-center py-5">Cargando perfil...</div>;
+    return <div className="text-center py-5 text-muted">Cargando perfil...</div>;
   }
 
   if (!profile) {
@@ -54,9 +53,6 @@ export default function ClientProfile() {
       ? Math.round((plan.sessions_used / plan.sessions_total) * 100)
       : 0;
 
-  /* =========================
-     ESTADO DEL PLAN (SOLO FECHA)
-  ========================== */
   const getPlanState = () => {
     if (!plan?.end_date) return "secondary";
 
@@ -75,46 +71,53 @@ export default function ClientProfile() {
   const planState = getPlanState();
 
   return (
-    <div className="container-fluid">
-      <div className="row justify-content-center">
-        <div className="col-12 col-lg-8">
+    <div className="container-fluid px-0">
 
-          {/* =====================
-              HEADER / IDENTIDAD
-          ====================== */}
-          <div className="card border-0 shadow-sm rounded-4 mb-4">
-            <div className="card-body d-flex align-items-center gap-3">
-              <div
-                className="rounded-circle d-flex align-items-center justify-content-center"
-                style={{
-                  width: 56,
-                  height: 56,
-                  background: "var(--purple-main)",
-                  color: "white",
-                  fontWeight: 600,
-                  fontSize: 20,
-                }}
-              >
-                {profile.name?.charAt(0)}
-                {profile.lastname?.charAt(0)}
-              </div>
+      {/* HEADER PERFIL */}
+      <div className="d-flex justify-content-center mb-4">
+        <div
+          className="w-100 px-4 py-4 text-white"
+          style={{
+            maxWidth: 900,
+            background: "linear-gradient(135deg, #6f42c1, #8b5cf6)",
+            borderRadius: 28,
+          }}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center shadow"
+              style={{
+                width: 64,
+                height: 64,
+                background: "white",
+                color: "#6f42c1",
+                fontWeight: 700,
+                fontSize: 22,
+              }}
+            >
+              {profile.name?.charAt(0)}
+              {profile.lastname?.charAt(0)}
+            </div>
 
-              <div>
-                <h5 className="mb-0">
-                  {profile.name} {profile.lastname}
-                </h5>
-                <span className="text-muted small">{profile.email}</span>
-              </div>
+            <div>
+              <h5 className="mb-1 fw-semibold">
+                {profile.name} {profile.lastname}
+              </h5>
+              <div className="small opacity-75">{profile.email}</div>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* =====================
-              ESTADO DEL PLAN
-          ====================== */}
-          <div className="card border-0 shadow-sm rounded-4 mb-4">
-            <div className="card-body">
+      <div className="row justify-content-center">
+        <div className="col-12 col-lg-7">
+
+          {/* PLAN */}
+          <div className="card border-0 shadow-sm rounded-5 mb-4">
+            <div className="card-body p-4">
+
               <div className="d-flex justify-content-between align-items-center mb-2">
-                <h6 className="mb-0">Mi plan</h6>
+                <h6 className="mb-0 fw-semibold">Mi plan</h6>
 
                 <span className={`badge bg-${planState}`}>
                   {planState === "success" && "Activo"}
@@ -124,71 +127,87 @@ export default function ClientProfile() {
                 </span>
               </div>
 
-              <p className="fw-semibold mb-1">
+              <div className="fw-semibold mb-1">
                 {plan?.plans?.name ?? "Sin plan"}
-              </p>
+              </div>
 
-              <p className="text-muted small mb-2">
+              <div className="text-muted small mb-3">
                 Vigente hasta {plan?.end_date ?? "—"}
-              </p>
+              </div>
 
-              {/* ⚠️ WARNING VISUAL */}
               {planState === "warning" && (
-                <div className="alert alert-warning py-2 small mb-3">
-                  ⚠️ Tu plan está próximo a vencer. Coordina tu renovación para no
-                  perder continuidad.
+                <div className="alert alert-warning py-2 small rounded-4">
+                  ⚠️ Tu plan está próximo a vencer. Coordina tu renovación.
                 </div>
               )}
 
               {planState === "danger" && (
-                <div className="alert alert-danger py-2 small mb-3">
-                  ❌ Tu plan se encuentra vencido. Contacta con el gimnasio para renovarlo.
+                <div className="alert alert-danger py-2 small rounded-4">
+                  ❌ Tu plan está vencido. Contacta para renovarlo.
                 </div>
               )}
 
               {plan?.sessions_total > 0 && (
                 <>
-                  <div className="progress mb-2" style={{ height: 8 }}>
-                    <div
-                      className={`progress-bar bg-${planState}`}
-                      role="progressbar"
-                      style={{ width: `${progress}%` }}
-                      aria-valuenow={progress}
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                    />
+                  <div className="mb-2">
+                    <div className="d-flex justify-content-between small mb-1">
+                      <span>Progreso</span>
+                      <span>{progress}%</span>
+                    </div>
+
+                    <div className="progress" style={{ height: 8 }}>
+                      <div
+                        className={`progress-bar bg-${planState}`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
                   </div>
 
-                  <p className="text-muted small mb-0">
-                    {plan.sessions_used} / {plan.sessions_total} sesiones usadas ·{" "}
-                    {plan.sessions_total - plan.sessions_used} restantes
-                  </p>
+                  <div className="row text-center mt-4">
+                    <Stat label="Totales" value={plan.sessions_total} />
+                    <Stat label="Usadas" value={plan.sessions_used} />
+                    <Stat
+                      label="Restantes"
+                      value={plan.sessions_total - plan.sessions_used}
+                      highlight={`text-${planState}`}
+                    />
+                  </div>
                 </>
               )}
             </div>
           </div>
 
-          {/* =====================
-              FECHAS
-          ====================== */}
-          <div className="card border-0 shadow-sm rounded-4 mb-4">
-            <div className="card-body">
-              <h6 className="mb-3">Fechas del plan</h6>
+          {/* FECHAS */}
+          <div className="card border-0 shadow-sm rounded-5">
+            <div className="card-body p-4">
+              <h6 className="fw-semibold mb-3">Fechas del plan</h6>
 
               <div className="d-flex justify-content-between mb-2">
                 <span className="text-muted">Inicio</span>
-                <span>{plan?.start_date ?? "—"}</span>
+                <span className="fw-semibold">{plan?.start_date ?? "—"}</span>
               </div>
 
               <div className="d-flex justify-content-between">
                 <span className="text-muted">Término</span>
-                <span>{plan?.end_date ?? "—"}</span>
+                <span className="fw-semibold">{plan?.end_date ?? "—"}</span>
               </div>
             </div>
           </div>
 
         </div>
       </div>
+    </div>
+  );
+}
+
+/* =========================
+   MINI UI
+========================= */
+function Stat({ label, value, highlight = "" }) {
+  return (
+    <div className="col">
+      <div className={`fw-semibold fs-4 ${highlight}`}>{value}</div>
+      <div className="small text-muted">{label}</div>
     </div>
   );
 }

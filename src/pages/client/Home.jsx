@@ -59,9 +59,6 @@ export default function ClientDashboard() {
     if (user) loadDashboard();
   }, [user]);
 
-  /* =========================
-     LOAD DASHBOARD
-  ========================== */
   const loadDashboard = async () => {
     setLoading(true);
 
@@ -69,7 +66,8 @@ export default function ClientDashboard() {
 
     const planQuery = supabase
       .from("client_plans")
-      .select(`
+      .select(
+        `
         id,
         start_date,
         end_date,
@@ -77,7 +75,8 @@ export default function ClientDashboard() {
         sessions_used,
         status,
         plans ( name )
-      `)
+      `
+      )
       .eq("client_id", user.id)
       .eq("status", "active")
       .maybeSingle();
@@ -105,9 +104,7 @@ export default function ClientDashboard() {
 
   if (loading) {
     return (
-      <div className="text-center py-5 text-muted">
-        Cargando tu resumen...
-      </div>
+      <div className="text-center py-5 text-muted">Cargando tu resumen...</div>
     );
   }
 
@@ -124,14 +121,9 @@ export default function ClientDashboard() {
       ? `Tu próxima sesión es en ${sessionDays} días`
       : null;
 
-  /* =========================
-     ESTADO SESIONES (%)
-  ========================== */
   const getSessionState = () => {
     if (!plan || plan.sessions_total === 0) return "secondary";
-
     const percentUsed = (plan.sessions_used / plan.sessions_total) * 100;
-
     if (percentUsed >= 100) return "danger";
     if (percentUsed >= 70) return "warning";
     return "success";
@@ -141,25 +133,30 @@ export default function ClientDashboard() {
   const planExpiry = plan ? getPlanExpiryState(plan.end_date) : null;
 
   return (
-    <div className="container-fluid">
+    <div className="container-fluid px-0">
+      {/* HEADER */}
+      <div className="d-flex justify-content-center mb-4">
+        <div
+          className="w-100 text-white p-4"
+          style={{
+            maxWidth: 700, 
+            background: "linear-gradient(135deg, #6f42c1, #8b5cf6)",
+            borderRadius: 24, 
+          }}
+        >
+          <h4 className="mb-1">
+            Hola{profile?.name ? `, ${profile.name}` : ""} 👋
+          </h4>
+
+          <p className="opacity-75 mb-0">
+            Este es el resumen de tu plan actual
+          </p>
+        </div>
+      </div>
+
       <div className="row justify-content-center">
         <div className="col-12 col-lg-6">
-
-          {/* =====================
-              SALUDO
-          ====================== */}
-          <div className="mb-4">
-            <h4 className="mb-1">
-              Hola{profile?.name ? `, ${profile.name}` : ""} 👋
-            </h4>
-            <p className="text-muted small mb-0">
-              Este es el resumen de tu plan actual
-            </p>
-          </div>
-
-          {/* =====================
-              ALERTA VIGENCIA
-          ====================== */}
+          {/* ALERTA */}
           {planExpiry && (
             <div
               className={`alert alert-${planExpiry.type} border-0 rounded-4 shadow-sm`}
@@ -168,9 +165,7 @@ export default function ClientDashboard() {
             </div>
           )}
 
-          {/* =====================
-              PLAN
-          ====================== */}
+          {/* PLAN */}
           {!plan && (
             <div className="card border-0 shadow-sm rounded-4">
               <div className="card-body text-center py-5">
@@ -191,11 +186,10 @@ export default function ClientDashboard() {
               );
 
               return (
-                <div className="card border-0 shadow-sm rounded-4">
-                  <div className="card-body">
-
+                <div className="card border-0 shadow-sm rounded-4 mb-4">
+                  <div className="card-body p-4">
                     <div className="d-flex justify-content-between align-items-center mb-2">
-                      <h5 className="mb-0">
+                      <h5 className="mb-0 fw-semibold">
                         {plan.plans?.name ?? "Plan activo"}
                       </h5>
 
@@ -211,56 +205,38 @@ export default function ClientDashboard() {
                       {formatDateCL(plan.end_date)}
                     </p>
 
-                    <div className="mb-2">
+                    <div className="mb-3">
                       <div className="d-flex justify-content-between small mb-1">
-                        <span>Sesiones usadas</span>
+                        <span>Progreso</span>
                         <span>{percent}%</span>
                       </div>
 
                       <div className="progress" style={{ height: 8 }}>
                         <div
                           className={`progress-bar bg-${state}`}
-                          role="progressbar"
                           style={{ width: `${percent}%` }}
                         />
                       </div>
                     </div>
 
                     <div className="row text-center mt-4">
-                      <div className="col">
-                        <p className="mb-1 fw-semibold fs-4">
-                          {plan.sessions_total}
-                        </p>
-                        <p className="small text-muted mb-0">Totales</p>
-                      </div>
-
-                      <div className="col">
-                        <p className="mb-1 fw-semibold fs-4">
-                          {plan.sessions_used}
-                        </p>
-                        <p className="small text-muted mb-0">Usadas</p>
-                      </div>
-
-                      <div className="col">
-                        <p className={`mb-1 fw-semibold fs-4 text-${state}`}>
-                          {remaining}
-                        </p>
-                        <p className="small text-muted mb-0">Restantes</p>
-                      </div>
+                      <Stat label="Totales" value={plan.sessions_total} />
+                      <Stat label="Usadas" value={plan.sessions_used} />
+                      <Stat
+                        label="Restantes"
+                        value={remaining}
+                        highlight={`text-${state}`}
+                      />
                     </div>
-
                   </div>
                 </div>
               );
             })()}
 
-          {/* =====================
-              PRÓXIMA SESIÓN
-          ====================== */}
-          <div className="card border-0 shadow-sm rounded-4 mt-4">
-            <div className="card-body">
-
-              <h6 className="mb-1">Próxima sesión</h6>
+          {/* PRÓXIMA SESIÓN */}
+          <div className="card border-0 shadow-sm rounded-4">
+            <div className="card-body p-4">
+              <h6 className="fw-semibold mb-2 text-muted">Próxima sesión</h6>
 
               {!nextSession && (
                 <p className="text-muted small mb-0">
@@ -269,27 +245,45 @@ export default function ClientDashboard() {
               )}
 
               {nextSession && (
-                <>
-                  <p className="small text-primary fw-semibold mb-2">
+                <div
+                  className="p-3 rounded-4"
+                  style={{
+                    background: "#f4f1ff",
+                    border: "1px solid #ece9ff",
+                  }}
+                >
+                  <p
+                    className="small fw-semibold mb-1"
+                    style={{ color: "#6f42c1" }}
+                  >
                     {sessionLabel}
                   </p>
 
-                  <p className="mb-1 fw-semibold">
+                  <div className="fw-semibold">
                     {formatDateCL(nextSession.reservation_date)}
-                  </p>
+                  </div>
 
-                  <p className="mb-0 text-muted small">
+                  <div className="text-muted small">
                     ⏰ {nextSession.reservation_time}
-                  </p>
-                </>
+                  </div>
+                </div>
               )}
-
             </div>
           </div>
-
         </div>
       </div>
     </div>
   );
 }
 
+/* =========================
+   MINI COMPONENT
+========================= */
+function Stat({ label, value, highlight = "" }) {
+  return (
+    <div className="col">
+      <div className={`fw-semibold fs-4 ${highlight}`}>{value}</div>
+      <div className="small text-muted">{label}</div>
+    </div>
+  );
+}

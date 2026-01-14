@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../services/supabase";
+import Swal from "sweetalert2";
 
 export default function Clients() {
   /* =========================
@@ -7,15 +8,17 @@ export default function Clients() {
   ========================== */
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [loadingClients, setLoadingClients] = useState(true);
 
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-
   const [clients, setClients] = useState([]);
   const [plans, setPlans] = useState([]);
+
+  const [selectedPlan, setSelectedPlan] = useState("");
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [clientPlanId, setClientPlanId] = useState(null);
 
   /* =========================
      FORM CREATE
@@ -30,7 +33,7 @@ export default function Clients() {
   });
 
   /* =========================
-     FORM EDIT (solo perfil)
+     FORM EDIT
   ========================== */
   const [editData, setEditData] = useState({
     client_id: "",
@@ -56,7 +59,7 @@ export default function Clients() {
   };
 
   /* =========================
-     FETCH PLANS (solo creación)
+     FETCH PLANS
   ========================== */
   const fetchPlans = async () => {
     const { data } = await supabase.from("plans").select("id, name");
@@ -69,13 +72,13 @@ export default function Clients() {
   }, []);
 
   /* =========================
-     BLOQUEO SCROLL BODY
+     BLOQUEO SCROLL
   ========================== */
   useEffect(() => {
     document.body.style.overflow =
-      showCreateModal || showEditModal ? "hidden" : "";
+      showCreateModal || showEditModal || showPlanModal ? "hidden" : "";
     return () => (document.body.style.overflow = "");
-  }, [showCreateModal, showEditModal]);
+  }, [showCreateModal, showEditModal, showPlanModal]);
 
   /* =========================
      HANDLERS
@@ -99,22 +102,46 @@ export default function Clients() {
     setShowEditModal(true);
   };
 
+  const openPlanModal = async (client) => {
+    const { data } = await supabase
+      .from("client_plans")
+      .select("id, plan_id")
+      .eq("client_id", client.id)
+      .eq("status", "active")
+      .single();
+
+    setSelectedClient(client);
+    setClientPlanId(data?.id || null);
+    setSelectedPlan(data?.plan_id || "");
+    setShowPlanModal(true);
+  };
+
   /* =========================
      CREAR CLIENTE
   ========================== */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+
+    const confirm = await Swal.fire({
+      title: "Crear cliente",
+      text: "¿Confirmas la creación del cliente?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, crear",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!confirm.isConfirmed) return;
 
     try {
+      setLoading(true);
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       const res = await fetch(
-        "https://geciurfpgvakyvkzybbr.supabase.co/functions/v1/create-client",
+        `${supabase.supabaseUrl}/functions/v1/create-client`,
         {
           method: "POST",
           headers: {
@@ -126,9 +153,9 @@ export default function Clients() {
       );
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al crear cliente");
+      if (!res.ok) throw new Error(data.error);
 
-      setSuccess("Cliente creado correctamente");
+      Swal.fire("Listo", "Cliente creado correctamente", "success");
 
       setFormData({
         name: "",
@@ -140,34 +167,40 @@ export default function Clients() {
       });
 
       await fetchClients();
-
-      setTimeout(() => {
-        setShowCreateModal(false);
-        setSuccess(null);
-      }, 800);
+      setShowCreateModal(false);
     } catch (err) {
-      setError(err.message);
+      Swal.fire("Error", err.message, "error");
     } finally {
       setLoading(false);
     }
   };
 
   /* =========================
-     EDITAR CLIENTE
+     EDITAR PERFIL
   ========================== */
   const handleUpdate = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+
+    const confirm = await Swal.fire({
+      title: "Guardar cambios",
+      text: "¿Deseas actualizar los datos del cliente?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, guardar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!confirm.isConfirmed) return;
 
     try {
+      setLoading(true);
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       const res = await fetch(
-        "https://geciurfpgvakyvkzybbr.supabase.co/functions/v1/update-client",
+        `${supabase.supabaseUrl}/functions/v1/update-client`,
         {
           method: "POST",
           headers: {
@@ -179,17 +212,64 @@ export default function Clients() {
       );
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al actualizar cliente");
+      if (!res.ok) throw new Error(data.error);
 
-      setSuccess("Cliente actualizado correctamente");
+      Swal.fire("Actualizado", "Cliente actualizado correctamente", "success");
       await fetchClients();
-
-      setTimeout(() => {
-        setShowEditModal(false);
-        setSuccess(null);
-      }, 800);
+      setShowEditModal(false);
     } catch (err) {
-      setError(err.message);
+      Swal.fire("Error", err.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* =========================
+     CAMBIAR PLAN
+  ========================== */
+  const handleChangePlan = async () => {
+    if (!selectedPlan || !clientPlanId) return;
+
+    const confirm = await Swal.fire({
+      title: "Cambiar plan",
+      text: "¿Confirmas el cambio de plan de este cliente?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, cambiar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      setLoading(true);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const res = await fetch(
+        `${supabase.supabaseUrl}/functions/v1/change-plan`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            client_plan_id: clientPlanId,
+            new_plan_id: selectedPlan,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      Swal.fire("Listo", "Plan cambiado correctamente", "success");
+      setShowPlanModal(false);
+    } catch (err) {
+      Swal.fire("Error", err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -264,10 +344,17 @@ export default function Clients() {
                   </td>
                   <td className="px-4 py-3 text-end">
                     <button
-                      className="btn btn-sm btn-outline-primary"
+                      className="btn btn-sm btn-outline-primary me-2"
                       onClick={() => openEditModal(client)}
                     >
                       Editar
+                    </button>
+
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => openPlanModal(client)}
+                    >
+                      Cambiar plan
                     </button>
                   </td>
                 </tr>
@@ -277,63 +364,37 @@ export default function Clients() {
         </div>
       </div>
 
-      {/* MOBILE */}
-      <div className="d-block d-md-none">
-        {loadingClients && (
-          <div className="text-center text-muted py-4">
-            Cargando clientes...
-          </div>
-        )}
-
-        {!loadingClients &&
-          clients.map((client) => (
-            <div
-              key={client.id}
-              className="card border-0 shadow-sm rounded-4 mb-3"
-            >
-              <div className="card-body d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="mb-1">
-                    {client.name} {client.lastname}
-                  </h6>
-                  <span className="fw-semibold">{client.email}</span>
-                </div>
-
-                <button
-                  className="btn btn-sm btn-outline-primary"
-                  onClick={() => openEditModal(client)}
-                >
-                  Editar
-                </button>
-              </div>
-            </div>
-          ))}
-      </div>
-
-      {/* MODAL CREAR */}
+      {/* MODALES */}
       {showCreateModal && (
         <CreateModal
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleSubmit}
           loading={loading}
-          error={error}
-          success={success}
           formData={formData}
           handleChange={handleChange}
           plans={plans}
         />
       )}
 
-      {/* MODAL EDITAR */}
       {showEditModal && (
         <EditModal
           onClose={() => setShowEditModal(false)}
           onSubmit={handleUpdate}
           loading={loading}
-          error={error}
-          success={success}
           formData={editData}
           handleChange={handleEditChange}
+        />
+      )}
+
+      {showPlanModal && (
+        <ChangePlanModal
+          onClose={() => setShowPlanModal(false)}
+          loading={loading}
+          client={selectedClient}
+          plans={plans}
+          selectedPlan={selectedPlan}
+          setSelectedPlan={setSelectedPlan}
+          onChangePlan={handleChangePlan}
         />
       )}
     </div>
@@ -347,17 +408,12 @@ function CreateModal({
   onClose,
   onSubmit,
   loading,
-  error,
-  success,
   formData,
   handleChange,
   plans,
 }) {
   return (
     <ModalBase title="Nuevo cliente" onClose={onClose} onSubmit={onSubmit} loading={loading}>
-      {error && <div className="alert alert-danger py-2">{error}</div>}
-      {success && <div className="alert alert-success py-2">{success}</div>}
-
       <Input label="Nombre" name="name" value={formData.name} onChange={handleChange} />
       <Input label="Apellido" name="lastname" value={formData.lastname} onChange={handleChange} />
       <Input label="Teléfono" name="phone" value={formData.phone} onChange={handleChange} />
@@ -387,22 +443,17 @@ function CreateModal({
 }
 
 /* =========================
-   MODAL EDITAR
+   MODAL EDITAR PERFIL
 ========================= */
 function EditModal({
   onClose,
   onSubmit,
   loading,
-  error,
-  success,
   formData,
   handleChange,
 }) {
   return (
     <ModalBase title="Editar cliente" onClose={onClose} onSubmit={onSubmit} loading={loading}>
-      {error && <div className="alert alert-danger py-2">{error}</div>}
-      {success && <div className="alert alert-success py-2">{success}</div>}
-
       <Input label="Nombre" name="name" value={formData.name} onChange={handleChange} />
       <Input label="Apellido" name="lastname" value={formData.lastname} onChange={handleChange} />
       <Input label="Teléfono" name="phone" value={formData.phone} onChange={handleChange} />
@@ -412,9 +463,67 @@ function EditModal({
 }
 
 /* =========================
+   MODAL CAMBIAR PLAN
+========================= */
+function ChangePlanModal({
+  onClose,
+  loading,
+  client,
+  plans,
+  selectedPlan,
+  setSelectedPlan,
+  onChangePlan,
+}) {
+  return (
+    <ModalBase
+      title="Cambiar plan"
+      onClose={onClose}
+      onSubmit={(e) => e.preventDefault()}
+      loading={loading}
+      showSubmit={false}
+    >
+      <p className="mb-2">
+        Cliente: <b>{client?.name} {client?.lastname}</b>
+      </p>
+
+      <label className="form-label">Nuevo plan</label>
+      <select
+        className="form-select mb-3"
+        value={selectedPlan}
+        onChange={(e) => setSelectedPlan(e.target.value)}
+      >
+        <option value="">Seleccionar plan</option>
+        {plans.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+
+      <button
+        type="button"
+        className="btn btn-danger w-100"
+        disabled={loading || !selectedPlan}
+        onClick={onChangePlan}
+      >
+        Cambiar plan
+      </button>
+    </ModalBase>
+  );
+}
+
+/* =========================
    BASE MODAL
 ========================= */
-function ModalBase({ title, onClose, onSubmit, loading, children }) {
+function ModalBase({
+  title,
+  onClose,
+  onSubmit,
+  loading,
+  children,
+  showSubmit = true,
+  submitText = "Guardar",
+}) {
   return (
     <div className="modal-backdrop-custom">
       <div className="modal-custom">
@@ -430,9 +539,12 @@ function ModalBase({ title, onClose, onSubmit, loading, children }) {
             <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
               Cancelar
             </button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? "Guardando..." : "Guardar"}
-            </button>
+
+            {showSubmit && (
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? "Guardando..." : submitText}
+              </button>
+            )}
           </div>
         </form>
       </div>

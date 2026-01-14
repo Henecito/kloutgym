@@ -45,6 +45,33 @@ export default function Attendance() {
   }
 
   /* =========================
+     ESTADO REAL DEL CLIENTE
+  ========================== */
+  function getState(c) {
+    if (c.end_date) {
+      const [y, m, d] = c.end_date.split("-");
+      const end = new Date(y, m - 1, d);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+
+      if (end < today) {
+        return { type: "danger", label: "Vencido" };
+      }
+    }
+
+    if (c.sessions_available <= 0) {
+      return { type: "danger", label: "Sin sesiones" };
+    }
+
+    if (c.sessions_available <= 3) {
+      return { type: "warning", label: "Pocas sesiones" };
+    }
+
+    return { type: "success", label: "Activo" };
+  }
+
+  /* =========================
      RENDER STATES
   ========================== */
   if (loading) {
@@ -56,11 +83,7 @@ export default function Attendance() {
   }
 
   if (error) {
-    return (
-      <div className="alert alert-danger">
-        Error: {error}
-      </div>
-    );
+    return <div className="alert alert-danger">Error: {error}</div>;
   }
 
   /* =========================
@@ -102,50 +125,48 @@ export default function Attendance() {
                 </thead>
 
                 <tbody>
-                  {clients.map((c) => (
-                    <tr key={c.client_id}>
-                      <td className="px-4 py-3">
-                        <div className="fw-semibold">
-                          {c.name} {c.lastname}
-                        </div>
-                        <div className="text-muted small">
-                          {c.email}
-                        </div>
-                      </td>
+                  {clients.map((c) => {
+                    const state = getState(c);
 
-                      <td className="px-4 py-3">
-                        {c.plan_name}
-                      </td>
+                    return (
+                      <tr key={c.client_id}>
+                        <td className="px-4 py-3">
+                          <div className="fw-semibold">
+                            {c.name} {c.lastname}
+                          </div>
+                          <div className="text-muted small">
+                            {c.email}
+                          </div>
+                        </td>
 
-                      <td className="px-4 py-3 text-center">
-                        {c.sessions_used}
-                      </td>
+                        <td className="px-4 py-3">
+                          {c.plan_name}
+                        </td>
 
-                      <td className="px-4 py-3 text-center">
-                        {c.sessions_total}
-                      </td>
+                        <td className="px-4 py-3 text-center">
+                          {c.sessions_used}
+                        </td>
 
-                      <td className="px-4 py-3 text-center fw-semibold">
-                        {c.sessions_available}
-                      </td>
+                        <td className="px-4 py-3 text-center">
+                          {c.sessions_total}
+                        </td>
 
-                      <td className="px-4 py-3">
-                        {new Date(c.end_date).toLocaleDateString("es-CL")}
-                      </td>
+                        <td className={`px-4 py-3 text-center fw-semibold text-${state.type}`}>
+                          {c.sessions_available}
+                        </td>
 
-                      <td className="px-4 py-3">
-                        <span
-                          className={`badge ${
-                            c.status === "active"
-                              ? "bg-success"
-                              : "bg-secondary"
-                          }`}
-                        >
-                          {c.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="px-4 py-3">
+                          {new Date(c.end_date).toLocaleDateString("es-CL")}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <span className={`badge bg-${state.type}`}>
+                            {state.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

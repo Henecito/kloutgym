@@ -7,13 +7,19 @@ import { rescheduleReservation } from "../../services/reservations.service";
 /* =========================
    HELPERS
 ========================= */
-const formatDateCL = (dateString) => {
+const formatPrettyDate = (dateString) => {
   const [y, m, d] = dateString.split("-");
-  return new Date(y, m - 1, d).toLocaleDateString("es-CL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  const date = new Date(y, m - 1, d);
+
+  return {
+    day: date.getDate(),
+    month: date.toLocaleDateString("es-CL", { month: "short" }),
+    full: date.toLocaleDateString("es-CL", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }),
+  };
 };
 
 const HOURS = [
@@ -40,73 +46,40 @@ export default function ClientSessions() {
 
   const intervalRef = useRef(null);
 
-  /* =========================
-     AUTO LOAD + AUTO REFRESH
-  ========================== */
   useEffect(() => {
     if (!user) return;
 
     loadReservations(user.id);
 
-    if (intervalRef.current) clearInterval(intervalRef.current);
-
     intervalRef.current = setInterval(() => {
       loadReservations(user.id, true);
     }, 15000);
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+    return () => clearInterval(intervalRef.current);
   }, [user, loadReservations]);
 
-  /* =========================
-     SEPARACIÓN DE RESERVAS
-  ========================== */
   const { upcoming, past } = useMemo(() => {
-    const today = new Date();
-
+    const now = new Date();
     const upcoming = [];
     const past = [];
 
     reservations.forEach((r) => {
       const dateTime = new Date(`${r.reservation_date}T${r.reservation_time}`);
-
-      if (r.status === "active" && dateTime >= today) {
-        upcoming.push(r);
-      } else {
-        past.push(r);
-      }
+      if (r.status === "active" && dateTime >= now) upcoming.push(r);
+      else past.push(r);
     });
 
     return { upcoming, past };
   }, [reservations]);
 
-  /* =========================
-     MODAL CONTROL
-  ========================== */
-  const openRescheduleModal = (reservation) => {
-    setSelectedReservation(reservation);
-    setNewDate(reservation.reservation_date);
-    setNewTime(reservation.reservation_time.slice(0, 5));
+  const openRescheduleModal = (r) => {
+    setSelectedReservation(r);
+    setNewDate(r.reservation_date);
+    setNewTime(r.reservation_time.slice(0, 5));
     setShowModal(true);
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedReservation(null);
-    setNewDate("");
-    setNewTime("");
-  };
-
-  /* =========================
-     BACKEND CALL
-  ========================== */
   const handleReschedule = async () => {
-    if (!selectedReservation || !newDate || !newTime) return;
-
     try {
       setSaving(true);
 
@@ -117,9 +90,8 @@ export default function ClientSessions() {
       );
 
       await loadReservations(user.id, true);
-
-      Swal.fire("Listo", "Tu reserva fue actualizada", "success");
-      closeModal();
+      Swal.fire("Listo", "Tu sesión fue reprogramada", "success");
+      setShowModal(false);
     } catch (err) {
       Swal.fire("Error", err.message || "No se pudo reprogramar", "error");
     } finally {
@@ -127,100 +99,139 @@ export default function ClientSessions() {
     }
   };
 
-  /* =========================
-     RENDER
-  ========================== */
   return (
-    <div className="container-fluid">
-      <div className="row justify-content-center">
-        <div className="col-12 col-lg-6">
+    <div className="container-fluid px-0">
 
-          {/* HEADER */}
-          <div className="mb-4 d-flex justify-content-between align-items-center">
-            <h4 className="mb-0">Mis sesiones</h4>
+      {/* HEADER */}
+      <div className="d-flex justify-content-center mb-4">
+        <div
+          className="w-100 px-4 py-4 text-white"
+          style={{
+            maxWidth: 900,
+            background: "linear-gradient(135deg, #6f42c1, #8b5cf6)",
+            borderRadius: 28,
+          }}
+        >
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <h3 className="mb-1 fw-bold">Mis sesiones</h3>
+              <p className="mb-0 opacity-75 small">
+                Tu agenda de entrenamiento
+              </p>
+            </div>
 
             <button
-              className="btn btn-sm btn-outline-secondary"
+              className="btn btn-sm btn-light rounded-pill"
               onClick={() => loadReservations(user.id, true)}
             >
               Actualizar
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="row justify-content-center">
+        <div className="col-12 col-lg-7">
 
           {loading && (
             <div className="text-center py-5 text-muted">
-              Cargando reservas...
+              Cargando sesiones...
             </div>
           )}
 
-          {/* =====================
-               PRÓXIMAS SESIONES
-          ====================== */}
+          {/* PRÓXIMAS */}
           {!loading && (
             <>
-              <h6 className="mb-3">Próximas sesiones</h6>
+              <h6 className="text-muted fw-semibold mb-3">
+                PRÓXIMAS SESIONES
+              </h6>
 
               {upcoming.length === 0 && (
-                <div className="card border-0 shadow-sm rounded-4 mb-4">
-                  <div className="card-body text-center text-muted py-4">
-                    No tienes sesiones próximas
-                  </div>
+                <div className="text-center text-muted py-5">
+                  No tienes sesiones programadas
                 </div>
               )}
 
-              {upcoming.map((r) => (
-                <div
-                  key={r.id}
-                  className="card border-0 shadow-sm rounded-4 mb-3"
-                >
-                  <div className="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                      <p className="mb-1 fw-semibold">
-                        {formatDateCL(r.reservation_date)}
-                      </p>
-                      <p className="mb-0 text-muted small">
-                        ⏰ {r.reservation_time}
-                      </p>
-                    </div>
+              {upcoming.map((r) => {
+                const d = formatPrettyDate(r.reservation_date);
 
-                    <div className="d-flex flex-column align-items-end gap-2">
-                      <span className="badge bg-success">Activa</span>
+                return (
+                  <div
+                    key={r.id}
+                    className="mb-4 p-4 shadow-sm rounded-5"
+                    style={{
+                      background: "white",
+                      borderLeft: "6px solid #6f42c1",
+                    }}
+                  >
+                    <div className="d-flex align-items-center justify-content-between gap-4">
 
-                      <span
-                        role="button"
-                        className="text-primary small fw-semibold"
-                        style={{ cursor: "pointer" }}
-                        onClick={() => openRescheduleModal(r)}
+                      {/* FECHA */}
+                      <div
+                        className="text-center px-3 py-2 rounded-4"
+                        style={{
+                          background: "#f4f1ff",
+                          minWidth: 80,
+                        }}
                       >
-                        Cambiar horario
-                      </span>
+                        <div
+                          className="fw-bold"
+                          style={{ fontSize: 28, color: "#6f42c1" }}
+                        >
+                          {d.day}
+                        </div>
+                        <div className="text-uppercase small text-muted">
+                          {d.month}
+                        </div>
+                      </div>
+
+                      {/* INFO */}
+                      <div className="flex-grow-1">
+                        <div className="fw-semibold mb-1">
+                          {d.full}
+                        </div>
+                        <div className="text-muted small">
+                          ⏰ {r.reservation_time}
+                        </div>
+                      </div>
+
+                      {/* ACTION */}
+                      <div className="d-flex flex-column align-items-end gap-2 ms-3">
+                        <span className="badge bg-success">Activa</span>
+
+                        <button
+                          className="btn btn-sm btn-outline-primary rounded-pill px-3"
+                          onClick={() => openRescheduleModal(r)}
+                        >
+                          Reprogramar
+                        </button>
+                      </div>
+
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </>
           )}
 
-          {/* =====================
-                HISTORIAL
-          ====================== */}
+          {/* HISTORIAL */}
           {!loading && past.length > 0 && (
             <>
-              <h6 className="mt-4 mb-3">Sesiones pasadas</h6>
+              <h6 className="text-muted fw-semibold mt-4 mb-3">
+                HISTORIAL
+              </h6>
 
-              {past.map((r) => (
-                <div
-                  key={r.id}
-                  className="card border-0 shadow-sm rounded-4 mb-3 opacity-75"
-                >
-                  <div className="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                      <p className="mb-1 fw-semibold">
-                        {formatDateCL(r.reservation_date)}
-                      </p>
-                      <p className="mb-0 text-muted small">
-                        ⏰ {r.reservation_time}
-                      </p>
+              {past.map((r) => {
+                const d = formatPrettyDate(r.reservation_date);
+
+                return (
+                  <div
+                    key={r.id}
+                    className="d-flex justify-content-between align-items-center mb-3 px-3 py-2 rounded-4"
+                    style={{ background: "#f8f9fa" }}
+                  >
+                    <div className="small">
+                      {d.full} · ⏰ {r.reservation_time}
                     </div>
 
                     <span
@@ -233,67 +244,59 @@ export default function ClientSessions() {
                       {r.status === "finished" ? "Finalizada" : "Cancelada"}
                     </span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </>
           )}
         </div>
       </div>
 
-      {/* =====================
-           MODAL
-      ====================== */}
+      {/* MODAL */}
       {showModal && selectedReservation && (
         <div
           className="modal fade show d-block"
-          style={{ background: "rgba(0,0,0,.5)" }}
+          style={{ background: "rgba(0,0,0,.6)" }}
         >
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content rounded-4">
-              <div className="modal-body">
-                <h5 className="mb-2">Reprogramar sesión</h5>
+            <div className="modal-content border-0 rounded-5">
+              <div className="modal-body p-4">
 
+                <h5 className="fw-bold mb-1">Reprogramar sesión</h5>
                 <p className="text-muted small mb-3">
-                  Cambia tu fecha u hora. La nueva hora debe cumplir la
-                  anticipación mínima.
+                  Elige una nueva fecha y horario
                 </p>
 
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Nueva fecha</label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    value={newDate}
-                    min={new Date().toISOString().split("T")[0]}
-                    onChange={(e) => setNewDate(e.target.value)}
-                  />
+                <label className="form-label fw-semibold">Fecha</label>
+                <input
+                  type="date"
+                  className="form-control mb-3"
+                  value={newDate}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setNewDate(e.target.value)}
+                />
+
+                <label className="form-label fw-semibold">Hora</label>
+                <div className="d-flex flex-wrap gap-2 mb-4">
+                  {HOURS.map((h) => (
+                    <button
+                      key={h}
+                      type="button"
+                      className={`btn btn-sm rounded-pill ${
+                        newTime === h
+                          ? "btn-primary"
+                          : "btn-outline-secondary"
+                      }`}
+                      onClick={() => setNewTime(h)}
+                    >
+                      {h}
+                    </button>
+                  ))}
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Nueva hora</label>
-
-                  <div className="d-flex flex-wrap gap-2">
-                    {HOURS.map((h) => (
-                      <button
-                        key={h}
-                        type="button"
-                        className={`btn btn-sm rounded-pill ${
-                          newTime === h
-                            ? "btn btn-primary"
-                            : "btn btn-outline-secondary"
-                        }`}
-                        onClick={() => setNewTime(h)}
-                      >
-                        {h}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="d-flex gap-2 mt-4">
+                <div className="d-flex gap-2">
                   <button
                     className="btn btn-outline-secondary w-50"
-                    onClick={closeModal}
+                    onClick={() => setShowModal(false)}
                     disabled={saving}
                   >
                     Cancelar
@@ -304,14 +307,16 @@ export default function ClientSessions() {
                     onClick={handleReschedule}
                     disabled={saving || !newDate || !newTime}
                   >
-                    {saving ? "Guardando..." : "Confirmar cambio"}
+                    {saving ? "Guardando..." : "Confirmar"}
                   </button>
                 </div>
+
               </div>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
