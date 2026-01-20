@@ -4,6 +4,9 @@ import { supabase } from "../../services/supabase";
 
 const MAX_CUPOS = 5;
 
+/* =========================
+   FORMATO FECHA CHILE (UI)
+========================= */
 const formatDateCL = (dateString) => {
   const [year, month, day] = dateString.split("-");
   return new Date(year, month - 1, day).toLocaleDateString("es-CL", {
@@ -42,23 +45,16 @@ export default function ClientBook() {
   ];
 
   /* =========================
-      CARGAR CUPOS DESDE BD
+     CARGAR CUPOS DESDE BD
   ========================= */
   const fetchAvailability = async (selectedDate) => {
     try {
       setLoadingHours(true);
 
-      const start = new Date(selectedDate);
-      start.setHours(0, 0, 0, 0);
-
-      const end = new Date(selectedDate);
-      end.setHours(23, 59, 59, 999);
-
       const { data, error } = await supabase
         .from("reservations")
-        .select("reservation_time, reservation_date")
-        .gte("reservation_date", start.toISOString())
-        .lte("reservation_date", end.toISOString())
+        .select("reservation_time")
+        .eq("reservation_date", selectedDate)
         .eq("status", "active");
 
       if (error) throw error;
@@ -87,7 +83,7 @@ export default function ClientBook() {
   }, [step, date]);
 
   /* =========================
-     REFRESCO AUTOMÁTICO SIMPLE
+     REFRESCO AUTOMÁTICO
   ========================= */
   useEffect(() => {
     if (step !== 2) return;
@@ -162,7 +158,7 @@ export default function ClientBook() {
       <div className="row justify-content-center">
         <div className="col-12 col-lg-6">
 
-          {/* STEPPER */}
+          {/* ================= STEPPER ================= */}
           <div className="card border-0 shadow-sm rounded-4 mb-4">
             <div className="card-body d-flex justify-content-between text-center">
               {["Fecha", "Hora", "Confirmar"].map((label, index) => {
@@ -193,7 +189,7 @@ export default function ClientBook() {
             </div>
           </div>
 
-          {/* STEP 1 */}
+          {/* ================= STEP 1 ================= */}
           {step === 1 && (
             <div className="card border-0 shadow-sm rounded-4 mb-4">
               <div className="card-body">
@@ -220,13 +216,12 @@ export default function ClientBook() {
             </div>
           )}
 
-          {/* STEP 2 */}
+          {/* ================= STEP 2 ================= */}
           {step === 2 && (
             <div className="card border-0 shadow-sm rounded-4 mb-4">
               <div className="card-body">
                 <h6 className="mb-2">Selecciona una hora</h6>
 
-                {/* 👇 CONTENEDOR RESPONSIVE */}
                 <div
                   className="mb-4"
                   style={{
@@ -288,7 +283,7 @@ export default function ClientBook() {
             </div>
           )}
 
-          {/* STEP 3 */}
+          {/* ================= STEP 3 ================= */}
           {step === 3 && (
             <div className="card border-0 shadow-sm rounded-4 mb-4">
               <div className="card-body">
