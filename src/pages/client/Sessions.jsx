@@ -165,7 +165,7 @@ export default function ClientSessions() {
                       borderLeft: "6px solid #6f42c1",
                     }}
                   >
-                    <div className="d-flex align-items-center justify-content-between gap-4">
+                    <div className="d-flex flex-wrap align-items-center gap-3">
 
                       {/* FECHA */}
                       <div
@@ -187,7 +187,7 @@ export default function ClientSessions() {
                       </div>
 
                       {/* INFO */}
-                      <div className="flex-grow-1">
+                      <div className="flex-grow-1 min-w-0">
                         <div className="fw-semibold mb-1">
                           {d.full}
                         </div>
@@ -197,7 +197,7 @@ export default function ClientSessions() {
                       </div>
 
                       {/* ACTION */}
-                      <div className="d-flex flex-column align-items-end gap-2 ms-3">
+                      <div className="w-100 w-md-auto d-flex flex-row flex-md-column align-items-center align-items-md-end justify-content-between gap-2 mt-2 mt-md-0">
                         <span className="badge bg-success">Activa</span>
 
                         <button
