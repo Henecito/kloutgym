@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../services/supabase";
+import { getAsistenciaHoyTrainer } from "../../services/trainerAttendanceService";
 
 /* =========================
    HELPERS FECHAS
@@ -33,6 +34,8 @@ export default function TrainerDashboard() {
   const [upcomingTotal, setUpcomingTotal] = useState(0);
   const [nextSession, setNextSession] = useState(null);
 
+  const [attendanceToday, setAttendanceToday] = useState(null);
+
   const today = todayISO();
 
   useEffect(() => {
@@ -55,6 +58,14 @@ export default function TrainerDashboard() {
         .single();
 
       if (profile?.name) setTrainerName(profile.name);
+    }
+
+    /* ASISTENCIA HOY */
+    try {
+      const asistencia = await getAsistenciaHoyTrainer();
+      setAttendanceToday(asistencia);
+    } catch (e) {
+      console.error("Error cargando asistencia", e);
     }
 
     /* HOY */
@@ -88,23 +99,27 @@ export default function TrainerDashboard() {
     setUpcomingTotal(upcomingData?.length || 0);
 
     /* PRÓXIMA SESIÓN */
+    let next = null;
+
     if (todayData && todayData.length > 0) {
       const nextToday = todayData.find((r) => r.status === "active");
       if (nextToday) {
-        setNextSession({
+        next = {
           time: nextToday.reservation_time,
           date: today,
-        });
+        };
       }
     }
 
-    if (!nextSession && upcomingData && upcomingData.length > 0) {
-      setNextSession({
+    if (!next && upcomingData && upcomingData.length > 0) {
+      next = {
         time: upcomingData[0].reservation_time,
         date: upcomingData[0].reservation_date,
         client: upcomingData[0].profiles,
-      });
+      };
     }
+
+    setNextSession(next);
 
     setLoading(false);
   }
@@ -135,9 +150,48 @@ export default function TrainerDashboard() {
 
       {/* METRICS */}
       <div className="row g-3 mb-4">
+
         <MetricCard title="Sesiones hoy" value={todayTotal} subtitle="agendadas" />
+
         <MetricCard title="Pendientes hoy" value={todayPending} subtitle="por realizar" />
+
         <MetricCard title="Próximas" value={upcomingTotal} subtitle="en agenda" />
+
+        {/* ASISTENCIA PRO */}
+        <div className="col-12 col-md-4">
+          <div
+            className="card border-0 shadow-sm rounded-4 h-100"
+            style={{
+              background: attendanceToday
+                ? "linear-gradient(135deg, #22c55e, #4ade80)"
+                : "linear-gradient(135deg, #f59e0b, #facc15)",
+              color: "white",
+            }}
+          >
+            <div className="card-body p-4 d-flex flex-column justify-content-between">
+              <div>
+                <div className="opacity-75 small mb-1">Mi asistencia</div>
+
+                <div className="fw-bold fs-3">
+                  {attendanceToday ? "Presente" : "No marcada"}
+                </div>
+
+                <div className="opacity-75 small">
+                  {attendanceToday
+                    ? `Hoy a las ${attendanceToday.check_in_time.slice(0,5)}`
+                    : "Pendiente de marcar"}
+                </div>
+              </div>
+
+              {!attendanceToday && (
+                <div className="mt-3 small opacity-75">
+                  Recuerda marcar tu asistencia hoy.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* NEXT SESSION */}

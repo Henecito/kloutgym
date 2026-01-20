@@ -11,6 +11,8 @@ export default function Payments() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [search, setSearch] = useState("");
+
   const [messageTemplate, setMessageTemplate] = useState("");
   const [showEditor, setShowEditor] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -105,7 +107,7 @@ export default function Payments() {
   function handleTemplateChange(value) {
     for (const v of SYSTEM_VARS) {
       if (messageTemplate.includes(v) && !value.includes(v)) {
-        return; // bloquea si intenta borrar una variable
+        return;
       }
     }
     setMessageTemplate(value);
@@ -150,7 +152,6 @@ export default function Payments() {
       if (!res.ok) throw new Error(data.error);
 
       await loadPayments();
-
       Swal.fire("Listo", "Plan renovado correctamente", "success");
     } catch (e) {
       console.error(e);
@@ -201,6 +202,19 @@ export default function Payments() {
   }
 
   /* =========================
+     FILTRO PERSONAS
+  ========================== */
+  const filteredRows = rows.filter((r) => {
+    const text = `
+      ${r.profiles?.name || ""}
+      ${r.profiles?.lastname || ""}
+      ${r.profiles?.phone || ""}
+    `.toLowerCase();
+
+    return text.includes(search.toLowerCase());
+  });
+
+  /* =========================
      RENDER
   ========================== */
   return (
@@ -223,12 +237,23 @@ export default function Payments() {
               </p>
             </div>
 
-            <button
-              className="btn btn-light btn-sm rounded-pill"
-              onClick={() => setShowEditor(true)}
-            >
-              Editar mensaje
-            </button>
+            <div className="d-flex gap-2 align-items-center">
+              <input
+                type="text"
+                className="form-control form-control-sm rounded-pill"
+                placeholder="Buscar persona..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ maxWidth: 220 }}
+              />
+
+              <button
+                className="btn btn-light btn-sm rounded-pill"
+                onClick={() => setShowEditor(true)}
+              >
+                Editar mensaje
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -243,10 +268,13 @@ export default function Payments() {
 
           {!loading && (
             <div className="row g-4">
-              {rows.map((r) => {
+              {filteredRows.map((r) => {
                 const d = daysLeft(r.end_date);
                 const badge = getBadge(d);
                 const isExpired = d < 0;
+
+                const price = Number(r.plans?.price || 0);
+                const amount = `$${price.toLocaleString("es-CL")}`;
 
                 return (
                   <div key={r.id} className="col-12 col-md-6 col-lg-4">
@@ -301,13 +329,12 @@ export default function Payments() {
                         </div>
 
                         <div className="mt-4 d-flex flex-column gap-2">
-                          {/* WHATSAPP */}
                           {r.profiles.phone ? (
                             <a
                               href={buildWhatsAppLink(
                                 r.profiles,
                                 r.end_date,
-                                `$${r.plans?.price || 0}`
+                                amount
                               )}
                               target="_blank"
                               rel="noreferrer"
@@ -325,7 +352,6 @@ export default function Payments() {
                             </button>
                           )}
 
-                          {/* RENOVAR PLAN */}
                           <button
                             disabled={!isExpired || renewingId === r.id}
                             className={`btn w-100 rounded-pill fw-semibold ${

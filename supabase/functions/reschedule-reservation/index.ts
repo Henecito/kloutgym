@@ -8,6 +8,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+/* =========================
+   🇨🇱 HORA ACTUAL CHILE
+========================= */
+function getChileNow() {
+  const now = new Date();
+  const chileString = now.toLocaleString("en-US", {
+    timeZone: "America/Santiago",
+  });
+  return new Date(chileString);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -88,9 +99,10 @@ serve(async (req) => {
       );
     }
 
+    const chileNow = getChileNow();
+
     /* =========================
        4️⃣ VALIDAR 60 MIN ANTES
-          (HORA ORIGINAL)
     ========================= */
     const [y, m, d] = reservation.reservation_date.split("-");
     const [hh, mm, ss] = reservation.reservation_time.split(":");
@@ -105,7 +117,7 @@ serve(async (req) => {
     );
 
     const diffMinutes =
-      (originalDateTime.getTime() - Date.now()) / 1000 / 60;
+      (originalDateTime.getTime() - chileNow.getTime()) / 1000 / 60;
 
     if (diffMinutes < 60) {
       return new Response(
@@ -118,8 +130,7 @@ serve(async (req) => {
     }
 
     /* =========================
-       4.5️⃣ BLOQUEAR HORA PASADA
-          (NUEVA FECHA/HORA)
+       5️⃣ BLOQUEAR HORA PASADA (NUEVA)
     ========================= */
     const [ny, nm, nd] = new_date.split("-");
     const [nh, nmin] = new_time.split(":");
@@ -133,7 +144,7 @@ serve(async (req) => {
       0
     );
 
-    if (newDateTime.getTime() <= Date.now()) {
+    if (newDateTime.getTime() <= chileNow.getTime()) {
       return new Response(
         JSON.stringify({
           error: "No puedes mover tu reserva a una hora pasada",
@@ -143,9 +154,9 @@ serve(async (req) => {
     }
 
     /* =========================
-       5️⃣ VALIDAR FECHA (NO PASADA)
+       6️⃣ VALIDAR FECHA (NO PASADA)
     ========================= */
-    const today = new Date();
+    const today = getChileNow();
     today.setHours(0, 0, 0, 0);
 
     const selectedDate = new Date(
@@ -163,7 +174,7 @@ serve(async (req) => {
     }
 
     /* =========================
-       6️⃣ VALIDAR HORARIO
+       7️⃣ VALIDAR HORARIO
     ========================= */
     const minutes = Number(nh) * 60 + Number(nmin);
 
@@ -184,7 +195,7 @@ serve(async (req) => {
     }
 
     /* =========================
-       7️⃣ VALIDAR CUPO
+       8️⃣ VALIDAR CUPO
     ========================= */
     const { count } = await supabase
       .from("reservations")
@@ -201,7 +212,7 @@ serve(async (req) => {
     }
 
     /* =========================
-       8️⃣ UPDATE SEGURO
+       9️⃣ UPDATE
     ========================= */
     const { data: updatedRows, error: updateError } = await supabase
       .from("reservations")

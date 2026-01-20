@@ -50,6 +50,14 @@ export default function TrainerLayout() {
           >
             Sesiones
           </NavLink>
+          
+          <NavLink
+            to="/trainer/asistencia"
+            className="sidebar-link"
+            onClick={() => setSidebarOpen(false)}
+          >
+            Asistencia
+          </NavLink>
 
           <NavLink
             to="/trainer/perfil"

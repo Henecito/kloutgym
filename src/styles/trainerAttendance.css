@@ -1,0 +1,161 @@
+.trainer-attendance-page {
+  padding: 26px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* HEADER */
+
+.trainer-attendance-header {
+  margin-bottom: 22px;
+}
+
+.trainer-attendance-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.trainer-attendance-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+/* CARD HOY */
+
+.attendance-today-card {
+  background: white;
+  border-radius: 18px;
+  padding: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+  margin-bottom: 26px;
+  gap: 16px;
+}
+
+.attendance-today-left h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.attendance-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.attendance-status span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #facc15;
+}
+
+.attendance-status.ok span {
+  background: #22c55e;
+}
+
+.attendance-btn {
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+  border: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 800;
+  color: white;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.attendance-btn:hover {
+  opacity: 0.9;
+}
+
+/* HISTORIAL */
+
+.attendance-history-card {
+  background: white;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+
+.attendance-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.attendance-history-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.attendance-history-header select {
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+}
+
+/* TABLA */
+
+.attendance-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 420px;
+}
+
+th {
+  text-align: left;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  padding-bottom: 10px;
+}
+
+td {
+  padding: 12px 0;
+  border-top: 1px solid #f1f5f9;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+td.ok {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 640px) {
+  .attendance-today-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .attendance-btn {
+    width: 100%;
+  }
+
+  .attendance-history-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -20,6 +20,8 @@ export default function Clients() {
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientPlanId, setClientPlanId] = useState(null);
 
+  const [search, setSearch] = useState("");
+
   /* =========================
      FORM CREATE
   ========================== */
@@ -52,7 +54,8 @@ export default function Clients() {
     const { data } = await supabase
       .from("profiles")
       .select("id, name, lastname, email, must_change_password, phone")
-      .eq("role", "client");
+      .eq("role", "client")
+      .order("name", { ascending: true });
 
     setClients(data || []);
     setLoadingClients(false);
@@ -72,7 +75,7 @@ export default function Clients() {
   }, []);
 
   /* =========================
-     BLOQUEO SCROLL
+     BLOQUEO SCROLL BODY
   ========================== */
   useEffect(() => {
     document.body.style.overflow =
@@ -81,15 +84,21 @@ export default function Clients() {
   }, [showCreateModal, showEditModal, showPlanModal]);
 
   /* =========================
+     FILTRADO
+  ========================== */
+  const filteredClients = clients.filter((c) => {
+    const full = `${c.name || ""} ${c.lastname || ""}`.toLowerCase();
+    return full.includes(search.toLowerCase());
+  });
+
+  /* =========================
      HANDLERS
   ========================== */
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
-  const handleEditChange = (e) => {
+  const handleEditChange = (e) =>
     setEditData({ ...editData, [e.target.name]: e.target.value });
-  };
 
   const openEditModal = (client) => {
     setEditData({
@@ -176,7 +185,7 @@ export default function Clients() {
   };
 
   /* =========================
-     EDITAR PERFIL
+     EDITAR CLIENTE
   ========================== */
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -232,7 +241,7 @@ export default function Clients() {
 
     const confirm = await Swal.fire({
       title: "Cambiar plan",
-      text: "¿Confirmas el cambio de plan de este cliente?",
+      text: "¿Confirmas el cambio de plan?",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sí, cambiar",
@@ -279,9 +288,9 @@ export default function Clients() {
      RENDER
   ========================== */
   return (
-    <div>
+    <div className="h-100 d-flex flex-column">
       {/* HEADER */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
         <div>
           <h2 className="mb-1">Clientes</h2>
           <p className="text-muted mb-0">
@@ -289,19 +298,30 @@ export default function Clients() {
           </p>
         </div>
 
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowCreateModal(true)}
-        >
-          + Nuevo cliente
-        </button>
+        <div className="d-flex gap-2 w-100 w-md-auto">
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Buscar por nombre o apellido..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ maxWidth: 260 }}
+          />
+
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowCreateModal(true)}
+          >
+            + Nuevo cliente
+          </button>
+        </div>
       </div>
 
       {/* DESKTOP */}
-      <div className="card border-0 shadow-sm rounded-4 d-none d-md-block">
-        <div className="card-body p-0">
+      <div className="card border-0 shadow-sm rounded-4 d-none d-md-flex flex-column flex-grow-1">
+        <div className="table-responsive flex-grow-1" style={{ overflowY: "auto" }}>
           <table className="table mb-0">
-            <thead className="table-light">
+            <thead className="table-light sticky-top">
               <tr>
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Correo</th>
@@ -319,15 +339,15 @@ export default function Clients() {
                 </tr>
               )}
 
-              {!loadingClients && clients.length === 0 && (
+              {!loadingClients && filteredClients.length === 0 && (
                 <tr>
                   <td colSpan="4" className="text-center py-5 text-muted">
-                    No hay clientes registrados aún
+                    Sin resultados
                   </td>
                 </tr>
               )}
 
-              {clients.map((client) => (
+              {filteredClients.map((client) => (
                 <tr key={client.id}>
                   <td className="px-4 py-3">
                     {client.name} {client.lastname}
@@ -349,7 +369,6 @@ export default function Clients() {
                     >
                       Editar
                     </button>
-
                     <button
                       className="btn btn-sm btn-outline-danger"
                       onClick={() => openPlanModal(client)}
@@ -365,26 +384,13 @@ export default function Clients() {
       </div>
 
       {/* MOBILE */}
-      <div className="d-block d-md-none">
-        {loadingClients && (
-          <div className="text-center py-5 text-muted">
-            Cargando clientes...
-          </div>
-        )}
-
-        {!loadingClients && clients.length === 0 && (
-          <div className="text-center py-5 text-muted">
-            No hay clientes registrados aún
-          </div>
-        )}
-
-        {clients.map((client) => (
+      <div className="d-block d-md-none flex-grow-1" style={{ overflowY: "auto" }}>
+        {filteredClients.map((client) => (
           <div key={client.id} className="card border-0 shadow-sm rounded-4 mb-3">
             <div className="card-body">
               <h6 className="mb-1">
                 {client.name} {client.lastname}
               </h6>
-
               <p className="mb-1 text-muted small">{client.email}</p>
 
               <div className="mb-3">
@@ -402,12 +408,11 @@ export default function Clients() {
                 >
                   Editar
                 </button>
-
                 <button
                   className="btn btn-sm btn-outline-danger w-100"
                   onClick={() => openPlanModal(client)}
                 >
-                  Cambiar Plan
+                  Cambiar plan
                 </button>
               </div>
             </div>
@@ -453,7 +458,7 @@ export default function Clients() {
 }
 
 /* =========================
-   MODALES E INPUTS
+   MODALES
 ========================= */
 
 function CreateModal({ onClose, onSubmit, loading, formData, handleChange, plans }) {

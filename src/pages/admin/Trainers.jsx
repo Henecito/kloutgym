@@ -1,5 +1,19 @@
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { supabase } from "../../services/supabase";
+import {
+  getTrainerAttendance,
+  addManualTrainerAttendance
+} from "../../services/adminAttendanceService";
+
+/* =========================
+   PARSE FECHA DB (YYYY-MM-DD)
+========================= */
+function parseDateCL(dateString) {
+  if (!dateString) return null;
+  const [y, m, d] = dateString.split("-");
+  return new Date(y, m - 1, d);
+}
 
 export default function Trainers() {
   const [showModal, setShowModal] = useState(false);
@@ -16,6 +30,17 @@ export default function Trainers() {
     phone: "",
     email: "",
   });
+
+  /* ===== asistencia modal ===== */
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [selectedTrainer, setSelectedTrainer] = useState(null);
+  const [attendance, setAttendance] = useState([]);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+
+  /* ===== manual ===== */
+  const [manualDate, setManualDate] = useState("");
+  const [manualTime, setManualTime] = useState("09:00");
+  const [addingManual, setAddingManual] = useState(false);
 
   /* =========================
      FETCH TRAINERS
@@ -40,9 +65,10 @@ export default function Trainers() {
      BLOQUEO SCROLL BODY
   ========================== */
   useEffect(() => {
-    document.body.style.overflow = showModal ? "hidden" : "";
+    document.body.style.overflow =
+      showModal || showAttendanceModal ? "hidden" : "";
     return () => (document.body.style.overflow = "");
-  }, [showModal]);
+  }, [showModal, showAttendanceModal]);
 
   /* =========================
      FORM
@@ -100,6 +126,61 @@ export default function Trainers() {
   };
 
   /* =========================
+     ABRIR ASISTENCIA
+  ========================== */
+  const openAttendance = async (trainer) => {
+    setSelectedTrainer(trainer);
+    setShowAttendanceModal(true);
+    setLoadingAttendance(true);
+
+    try {
+      const data = await getTrainerAttendance(trainer.id, 30);
+      setAttendance(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  /* =========================
+     AGREGAR ASISTENCIA MANUAL
+  ========================== */
+  const handleAddManualAttendance = async () => {
+    if (!manualDate || !manualTime) {
+      Swal.fire("Completa fecha y hora");
+      return;
+    }
+
+    try {
+      setAddingManual(true);
+
+      const newRecord = await addManualTrainerAttendance(
+        selectedTrainer.id,
+        manualDate,
+        manualTime,
+        "Agregado manualmente por admin"
+      );
+
+      setAttendance((prev) => [newRecord, ...prev]);
+      setManualDate("");
+      setManualTime("09:00");
+
+      Swal.fire({
+        icon: "success",
+        title: "Asistencia agregada",
+        timer: 1200,
+        showConfirmButton: false,
+      });
+    } catch (e) {
+      Swal.fire("Error", "No se pudo agregar la asistencia", "error");
+      console.error(e);
+    } finally {
+      setAddingManual(false);
+    }
+  };
+
+  /* =========================
      RENDER
   ========================== */
   return (
@@ -148,7 +229,11 @@ export default function Trainers() {
               )}
 
               {trainers.map((t) => (
-                <tr key={t.id}>
+                <tr
+                  key={t.id}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => openAttendance(t)}
+                >
                   <td className="px-4 py-3">
                     {t.name} {t.lastname}
                   </td>
@@ -182,6 +267,8 @@ export default function Trainers() {
             <div
               key={t.id}
               className="card border-0 shadow-sm rounded-4 mb-3"
+              style={{ cursor: "pointer" }}
+              onClick={() => openAttendance(t)}
             >
               <div className="card-body">
                 <h6 className="mb-1">
@@ -206,7 +293,7 @@ export default function Trainers() {
           ))}
       </div>
 
-      {/* MODAL */}
+      {/* MODAL CREAR */}
       {showModal && (
         <div className="modal-backdrop-custom">
           <div className="modal-custom">
@@ -294,6 +381,125 @@ export default function Trainers() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ASISTENCIA */}
+      {showAttendanceModal && selectedTrainer && (
+        <div className="modal-backdrop-custom">
+          <div className="modal-custom" style={{ maxWidth: 750 }}>
+            <div className="modal-header-custom d-flex justify-content-between align-items-center">
+              <h5 className="mb-0">
+                Asistencia — {selectedTrainer.name} {selectedTrainer.lastname}
+              </h5>
+
+              <button
+                className="btn-close"
+                onClick={() => {
+                  setShowAttendanceModal(false);
+                  setAttendance([]);
+                  setSelectedTrainer(null);
+                }}
+              />
+            </div>
+
+            <div className="modal-body-custom">
+
+              {/* AGREGAR MANUAL */}
+              <div
+                className="mb-3 p-3 rounded-3"
+                style={{ background: "#f4f1ff", border: "1px solid #ece9ff" }}
+              >
+                <div className="fw-semibold mb-2">
+                  Agregar asistencia manual
+                </div>
+
+                <div className="d-flex flex-wrap gap-2 align-items-end">
+                  <div>
+                    <label className="form-label small mb-1">Fecha</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={manualDate}
+                      onChange={(e) => setManualDate(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label small mb-1">Hora</label>
+                    <input
+                      type="time"
+                      className="form-control"
+                      value={manualTime}
+                      onChange={(e) => setManualTime(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleAddManualAttendance}
+                    disabled={addingManual}
+                  >
+                    {addingManual ? "Agregando..." : "Agregar"}
+                  </button>
+                </div>
+              </div>
+
+              {/* HISTORIAL */}
+              {loadingAttendance && (
+                <div className="text-center text-muted py-4">
+                  Cargando asistencia...
+                </div>
+              )}
+
+              {!loadingAttendance && attendance.length === 0 && (
+                <div className="text-center text-muted py-4">
+                  No hay registros de asistencia.
+                </div>
+              )}
+
+              {!loadingAttendance && attendance.length > 0 && (
+                <div className="table-responsive">
+                  <table className="table align-middle">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {attendance.map((a) => {
+                        const date = parseDateCL(a.date);
+
+                        return (
+                          <tr key={a.id}>
+                            <td>
+                              {date
+                                ? date.toLocaleDateString("es-CL")
+                                : "-"}
+                            </td>
+                            <td>{a.check_in_time.slice(0, 5)}</td>
+                            <td>
+                              <span className="badge bg-success">
+                                Presente
+                              </span>
+                              {a.note && (
+                                <div className="small text-muted">
+                                  {a.note}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+            </div>
           </div>
         </div>
       )}

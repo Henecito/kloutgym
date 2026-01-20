@@ -97,3 +97,7 @@
 .client-link:nth-child(4).active ~ .client-nav-indicator {
   transform: translateX(300%);
 }
+
+.table thead.sticky-top {
+  z-index: 1;
+}
