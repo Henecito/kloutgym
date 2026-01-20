@@ -78,6 +78,7 @@ export default function ClientBook() {
   ========================= */
   useEffect(() => {
     if (step === 2 && date) {
+      setAvailability({}); // 🔥 limpia cupos anteriores
       fetchAvailability(date);
     }
   }, [step, date]);
@@ -205,6 +206,7 @@ export default function ClientBook() {
                     onChange={(e) => {
                       setDate(e.target.value);
                       setHour("");
+                      setAvailability({}); // 🔥 limpia al cambiar fecha
                     }}
                   />
                 </div>
