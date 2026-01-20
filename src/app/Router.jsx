@@ -3,7 +3,8 @@ import Login from "../auth/Login";
 import ChangePassword from "../auth/ChangePassword";
 import ProtectedRoute from "./ProtectedRoute";
 
-/* ADMIN */
+/* ================= ADMIN ================= */
+
 import AdminLayout from "../layouts/AdminLayout";
 import Dashboard from "../pages/admin/Dashboard";
 import Clients from "../pages/admin/Clients";
@@ -11,23 +12,31 @@ import Trainers from "../pages/admin/Trainers";
 import Attendance from "../pages/admin/Attendance";
 import Payments from "../pages/admin/Payments";
 
-/* TRAINER */
+/* ================= TRAINER ================= */
+
 import TrainerLayout from "../layouts/TrainerLayout";
 import TrainerDashboard from "../pages/trainer/Dashboard";
 import Sessions from "../pages/trainer/Sessions";
 import AttendanceTrainer from "../pages/trainer/AttendanceTrainer";
 import TrainerProfile from "../pages/trainer/Profile";
 
-/* CLIENT */
+/* ================= CLIENT ================= */
+
 import ClientLayout from "../layouts/ClientLayout";
 import ClientHome from "../pages/client/Home";
 import ClientBook from "../pages/client/Book";
 import ClientSessions from "../pages/client/Sessions";
 import ClientProfile from "../pages/client/Profile";
 
+/* ================= ROUTER ================= */
+
 export default function Router() {
   return (
     <Routes>
+
+      {/* ROOT */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+
       {/* LOGIN */}
       <Route path="/login" element={<Login />} />
 
@@ -36,7 +45,7 @@ export default function Router() {
         <Route path="/cambiar-password" element={<ChangePassword />} />
       </Route>
 
-      {/* ADMIN */}
+      {/* ================= ADMIN ================= */}
       <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Dashboard />} />
@@ -47,7 +56,7 @@ export default function Router() {
         </Route>
       </Route>
 
-      {/* TRAINER */}
+      {/* ================= TRAINER ================= */}
       <Route element={<ProtectedRoute allowedRoles={["trainer"]} />}>
         <Route path="/trainer" element={<TrainerLayout />}>
           <Route index element={<TrainerDashboard />} />
@@ -57,7 +66,7 @@ export default function Router() {
         </Route>
       </Route>
 
-      {/* CLIENT */}
+      {/* ================= CLIENT ================= */}
       <Route element={<ProtectedRoute allowedRoles={["client"]} />}>
         <Route path="/client" element={<ClientLayout />}>
           <Route index element={<ClientHome />} />
@@ -67,8 +76,9 @@ export default function Router() {
         </Route>
       </Route>
 
-      {/* 🔑 FALLBACK PARA GITHUB PAGES */}
+      {/* FALLBACK GLOBAL */}
       <Route path="*" element={<Navigate to="/login" replace />} />
+
     </Routes>
   );
 }
