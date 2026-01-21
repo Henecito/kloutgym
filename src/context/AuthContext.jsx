@@ -8,82 +8,54 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔁 Cargar perfil
+  // 🔁 Cargar perfil (expuesto)
   const fetchProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
 
-      if (error) throw error;
-
+    if (!error) {
       setProfile(data);
-    } catch (err) {
-      console.error("Error loading profile:", err);
+    } else {
+      console.error("Error loading profile:", error);
       setProfile(null);
     }
   };
 
-  // 🚪 Logout blindado (Safari safe)
-  const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.warn("Supabase signOut error:", e);
-    }
-
-    setUser(null);
-    setProfile(null);
-
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // hard redirect para romper estado interno
-    window.location.replace("/login");
-  };
-
-  // 🔐 Inicializar y escuchar auth
+  // 1️⃣ Inicializar sesión
   useEffect(() => {
-    let mounted = true;
-
     const init = async () => {
-      const { data, error } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
+      const currentUser = data.session?.user ?? null;
 
-      if (!mounted) return;
+      setUser(currentUser);
 
-      if (error || !data?.session?.user) {
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-        return;
+      if (currentUser) {
+        await fetchProfile(currentUser.id);
       }
 
-      setUser(data.session.user);
-      await fetchProfile(data.session.user.id);
       setLoading(false);
     };
 
     init();
 
+    // 2️⃣ Escuchar cambios de auth (login / logout)
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (!mounted) return;
+      (_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
 
-        if (!session?.user) {
-          setUser(null);
+        if (currentUser) {
+          fetchProfile(currentUser.id);
+        } else {
           setProfile(null);
-          return;
         }
-
-        setUser(session.user);
-        await fetchProfile(session.user.id);
       }
     );
 
     return () => {
-      mounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);
@@ -94,9 +66,8 @@ export function AuthProvider({ children }) {
         user,
         profile,
         loading,
-        fetchProfile,
-        setProfile,
-        logout,
+        setProfile,   // 🔥 CLAVE
+        fetchProfile, // 🔥 CLAVE
       }}
     >
       {children}
