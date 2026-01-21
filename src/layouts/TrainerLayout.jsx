@@ -8,9 +8,24 @@ export default function TrainerLayout() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+  try {
     await supabase.auth.signOut();
-    navigate("/login");
-  };
+  } catch (e) {
+    console.warn("signOut error:", e);
+  }
+
+  // 🔥 Limpieza fuerte (Safari session zombie fix)
+  localStorage.clear();
+  sessionStorage.clear();
+
+  if (window.indexedDB?.databases) {
+    const dbs = await indexedDB.databases();
+    dbs.forEach(db => indexedDB.deleteDatabase(db.name));
+  }
+
+  // 🔄 Recarga limpia (mejor que navigate en este caso)
+  window.location.href = "/";
+};
 
   return (
     <div className="admin-layout">

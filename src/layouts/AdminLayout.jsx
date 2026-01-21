@@ -24,7 +24,7 @@ const handleLogout = async () => {
   }
 
   // 🔄 Recarga limpia (mejor que navigate en este caso)
-  window.location.href = "/login";
+  window.location.href = "/";
 };
 
   return (
