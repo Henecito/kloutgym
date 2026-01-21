@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔁 Cargar perfil
+  // 🔁 Cargar perfil (expuesto)
   const fetchProfile = async (userId) => {
     const { data, error } = await supabase
       .from("profiles")
@@ -24,54 +24,34 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // 🚪 LOGOUT BLINDADO (nuevo)
-  const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.warn("signOut error:", e);
-    }
-
-    setUser(null);
-    setProfile(null);
-
-    localStorage.clear();
-    sessionStorage.clear();
-
-    window.location.href = "/login";
-  };
-
-  // 🔐 Inicializar sesión
+  // 1️⃣ Inicializar sesión
   useEffect(() => {
     const init = async () => {
-      const { data, error } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
+      const currentUser = data.session?.user ?? null;
 
-      if (error || !data?.session?.user) {
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-        return;
+      setUser(currentUser);
+
+      if (currentUser) {
+        await fetchProfile(currentUser.id);
       }
 
-      const currentUser = data.session.user;
-      setUser(currentUser);
-      await fetchProfile(currentUser.id);
       setLoading(false);
     };
 
     init();
 
-    // 👂 Escuchar cambios de auth
+    // 2️⃣ Escuchar cambios de auth (login / logout)
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (!session?.user) {
-          setUser(null);
-          setProfile(null);
-          return;
-        }
+      (_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
 
-        setUser(session.user);
-        await fetchProfile(session.user.id);
+        if (currentUser) {
+          fetchProfile(currentUser.id);
+        } else {
+          setProfile(null);
+        }
       }
     );
 
@@ -86,9 +66,8 @@ export function AuthProvider({ children }) {
         user,
         profile,
         loading,
-        setProfile,
-        fetchProfile,
-        logout, // 👈 nuevo
+        setProfile,   // 🔥 CLAVE
+        fetchProfile, // 🔥 CLAVE
       }}
     >
       {children}
