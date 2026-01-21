@@ -11,22 +11,22 @@ export default defineConfig({
         enabled: true
       },
       manifest: {
-        name: "Klout Gym",
-        short_name: "Klout",
-        description: "Sistema de gestión Klout Gym",
-        theme_color: "#0a0c10",
-        background_color: "#0a0c10",
+        name: "STDI Gymanager",
+        short_name: "Gymanager",
+        description: "Sistema de gestión Gymanager",
+        theme_color: "#ffffff",
+        background_color: "#ffffff",
         display: "standalone",
         start_url: "/",
         scope: "/",
         icons: [
           {
-            src: "/pwa-icon.png",
+            src: "/pwa-icon192.png",
             sizes: "192x192",
             type: "image/png"
           },
           {
-            src: "/pwa-icon.png",
+            src: "/pwa-icon512.png",
             sizes: "512x512",
             type: "image/png"
           }
