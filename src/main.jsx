@@ -7,6 +7,13 @@ import { ReservationsProvider } from "./context/ReservationsContext";
 import "./styles/theme.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 
+// 👉 PWA: registro del service worker
+import { registerSW } from "virtual:pwa-register";
+
+registerSW({
+  immediate: true
+});
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <AuthProvider>
     <ReservationsProvider>
