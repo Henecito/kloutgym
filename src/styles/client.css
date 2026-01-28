@@ -5,15 +5,19 @@
   background-color: var(--bg-light);
 }
 
-/* TOPBAR */
+/* ======================
+   TOPBAR
+====================== */
 .client-topbar {
-  height: 56px;
+  height: calc(56px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 1rem 0 1rem;
+
   background-color: #ffffff;
   border-bottom: 1px solid #e5e7eb;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 1rem;
 }
 
 .client-title {
@@ -33,7 +37,9 @@
   color: var(--purple-main);
 }
 
-/* CONTENT */
+/* ======================
+   CONTENT
+====================== */
 .client-content {
   flex: 1;
   padding: 1rem;
@@ -41,16 +47,17 @@
   overflow-y: auto;
 }
 
-/* BOTTOM NAV */
+/* ======================
+   BOTTOM NAV
+====================== */
 .client-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
 
-  height: 64px;
-  padding-top: 8px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  height: calc(64px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
 
   background-color: #ffffff;
   border-top: 1px solid #e5e7eb;
@@ -62,7 +69,9 @@
   z-index: 1000;
 }
 
-/* Links */
+/* ======================
+   LINKS
+====================== */
 .client-link {
   position: relative;
   z-index: 2;
@@ -71,6 +80,7 @@
   font-size: 0.85rem;
   flex: 1;
   text-align: center;
+  padding: 6px 0;
 }
 
 /* Activo */
@@ -79,20 +89,26 @@
   font-weight: 600;
 }
 
-/* INDICADOR MORADO */
+/* ======================
+   INDICADOR
+====================== */
 .client-nav-indicator {
   position: absolute;
   bottom: calc(8px + env(safe-area-inset-bottom));
   left: 0;
   width: 25%;
   height: 3rem;
+
   background-color: var(--purple-main);
   border-radius: 999px;
+
   transition: transform 0.3s ease;
   z-index: 1;
 }
 
-/* Posiciones según ruta */
+/* ======================
+   POSICIONES
+====================== */
 .client-link:nth-child(1).active ~ .client-nav-indicator {
   transform: translateX(0%);
 }
@@ -109,6 +125,9 @@
   transform: translateX(300%);
 }
 
+/* ======================
+   MISC
+====================== */
 .table thead.sticky-top {
   z-index: 1;
 }
