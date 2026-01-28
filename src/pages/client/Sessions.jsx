@@ -1,8 +1,11 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Swal from "sweetalert2";
 import { useAuth } from "../../context/AuthContext";
 import { useReservations } from "../../context/ReservationsContext";
-import { rescheduleReservation } from "../../services/reservations.service";
+import {
+  rescheduleReservation,
+  cancelReservation,
+} from "../../services/reservations.service";
 
 /* =========================
    HELPERS
@@ -23,6 +26,7 @@ const formatPrettyDate = (dateString) => {
 };
 
 const HOURS = [
+  "06:00",
   "08:00",
   "09:00",
   "10:00",
@@ -45,20 +49,17 @@ export default function ClientSessions() {
   const [newTime, setNewTime] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const intervalRef = useRef(null);
-
+  /* =========================
+     LOAD
+  ========================= */
   useEffect(() => {
     if (!user) return;
-
     loadReservations(user.id);
-
-    intervalRef.current = setInterval(() => {
-      loadReservations(user.id, true);
-    }, 15000);
-
-    return () => clearInterval(intervalRef.current);
   }, [user, loadReservations]);
 
+  /* =========================
+     SPLIT UPCOMING / PAST
+  ========================= */
   const { upcoming, past } = useMemo(() => {
     const now = new Date();
     const upcoming = [];
@@ -73,6 +74,9 @@ export default function ClientSessions() {
     return { upcoming, past };
   }, [reservations]);
 
+  /* =========================
+     REPROGRAM
+  ========================= */
   const openRescheduleModal = (r) => {
     setSelectedReservation(r);
     setNewDate(r.reservation_date);
@@ -100,6 +104,34 @@ export default function ClientSessions() {
     }
   };
 
+  /* =========================
+     CANCEL
+  ========================= */
+  const handleCancel = async (r) => {
+    const result = await Swal.fire({
+      title: "¿Cancelar sesión?",
+      text: "Esta acción no se puede deshacer",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, cancelar",
+      cancelButtonText: "No",
+      confirmButtonColor: "#dc3545",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await cancelReservation(r.id);
+      await loadReservations(user.id, true);
+      Swal.fire("Cancelada", "Tu sesión fue cancelada", "success");
+    } catch (err) {
+      Swal.fire("Error", err.message || "No se pudo cancelar", "error");
+    }
+  };
+
+  /* =========================
+     UI
+  ========================= */
   return (
     <div className="container-fluid px-0">
 
@@ -140,7 +172,6 @@ export default function ClientSessions() {
             </div>
           )}
 
-          {/* PRÓXIMAS */}
           {!loading && (
             <>
               <h6 className="text-muted fw-semibold mb-3">
@@ -170,10 +201,7 @@ export default function ClientSessions() {
                       {/* FECHA */}
                       <div
                         className="text-center px-3 py-2 rounded-4"
-                        style={{
-                          background: "#f4f1ff",
-                          minWidth: 80,
-                        }}
+                        style={{ background: "#f4f1ff", minWidth: 80 }}
                       >
                         <div
                           className="fw-bold"
@@ -196,16 +224,25 @@ export default function ClientSessions() {
                         </div>
                       </div>
 
-                      {/* ACTION */}
+                      {/* ACTIONS */}
                       <div className="w-100 w-md-auto d-flex flex-row flex-md-column align-items-center align-items-md-end justify-content-between gap-2 mt-2 mt-md-0">
                         <span className="badge bg-success">Activa</span>
 
-                        <button
-                          className="btn btn-sm btn-outline-primary rounded-pill px-3"
-                          onClick={() => openRescheduleModal(r)}
-                        >
-                          Reprogramar
-                        </button>
+                        <div className="d-flex gap-2">
+                          <button
+                            className="btn btn-sm btn-outline-primary rounded-pill px-3"
+                            onClick={() => openRescheduleModal(r)}
+                          >
+                            Reprogramar
+                          </button>
+
+                          <button
+                            className="btn btn-sm btn-outline-danger rounded-pill px-3"
+                            onClick={() => handleCancel(r)}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
                       </div>
 
                     </div>
@@ -215,7 +252,6 @@ export default function ClientSessions() {
             </>
           )}
 
-          {/* HISTORIAL */}
           {!loading && past.length > 0 && (
             <>
               <h6 className="text-muted fw-semibold mt-4 mb-3">
