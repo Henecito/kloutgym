@@ -6,6 +6,7 @@ import {
   rescheduleReservation,
   cancelReservation,
 } from "../../services/reservations.service";
+import { supabase } from "../../services/supabase";
 
 /* =========================
    HELPERS
@@ -39,6 +40,8 @@ const HOURS = [
   "21:30",
 ];
 
+const MAX_CUPOS = 5;
+
 export default function ClientSessions() {
   const { user } = useAuth();
   const { reservations, loading, loadReservations } = useReservations();
@@ -48,6 +51,9 @@ export default function ClientSessions() {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [availability, setAvailability] = useState({});
+  const [loadingHours, setLoadingHours] = useState(false);
 
   /* =========================
      LOAD
@@ -75,14 +81,52 @@ export default function ClientSessions() {
   }, [reservations]);
 
   /* =========================
+     CUPOS
+  ========================= */
+  const fetchAvailability = async (selectedDate) => {
+    try {
+      setLoadingHours(true);
+
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("reservation_time")
+        .eq("reservation_date", selectedDate)
+        .eq("status", "active");
+
+      if (error) throw error;
+
+      const counts = {};
+      data.forEach((r) => {
+        const time = r.reservation_time.slice(0, 5);
+        counts[time] = (counts[time] || 0) + 1;
+      });
+
+      setAvailability(counts);
+    } catch (e) {
+      console.error("Error cargando cupos:", e);
+    } finally {
+      setLoadingHours(false);
+    }
+  };
+
+  /* =========================
      REPROGRAM
   ========================= */
   const openRescheduleModal = (r) => {
     setSelectedReservation(r);
     setNewDate(r.reservation_date);
     setNewTime(r.reservation_time.slice(0, 5));
+    setAvailability({});
+    fetchAvailability(r.reservation_date);
     setShowModal(true);
   };
+
+  useEffect(() => {
+    if (showModal && newDate) {
+      setAvailability({});
+      fetchAvailability(newDate);
+    }
+  }, [newDate, showModal]);
 
   const handleReschedule = async () => {
     try {
@@ -311,7 +355,7 @@ export default function ClientSessions() {
                   min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => {
                     const selected = new Date(e.target.value);
-                    const day = selected.getDay(); // 0 domingo, 6 sábado
+                    const day = selected.getDay();
 
                     if (day === 0 || day === 6) {
                       Swal.fire(
@@ -328,20 +372,48 @@ export default function ClientSessions() {
 
                 <label className="form-label fw-semibold">Hora</label>
                 <div className="d-flex flex-wrap gap-2 mb-4">
-                  {HOURS.map((h) => (
-                    <button
-                      key={h}
-                      type="button"
-                      className={`btn btn-sm rounded-pill ${
-                        newTime === h
-                          ? "btn-primary"
-                          : "btn-outline-secondary"
-                      }`}
-                      onClick={() => setNewTime(h)}
-                    >
-                      {h}
-                    </button>
-                  ))}
+                  {HOURS.map((h) => {
+                    const used = availability[h] || 0;
+                    const free = MAX_CUPOS - used;
+                    const full = free <= 0;
+
+                    let variant = "btn-outline-secondary";
+                    let extraStyle = {};
+
+                    if (free === 1) variant = "btn-danger";
+                    if (full) {
+                      variant = "btn-outline-secondary";
+                      extraStyle = { opacity: 0.4, cursor: "not-allowed" };
+                    }
+                    if (newTime === h) variant = "btn-primary";
+
+                    return (
+                      <button
+                        key={h}
+                        type="button"
+                        disabled={full || loadingHours}
+                        className={`btn btn-sm rounded-pill ${variant}`}
+                        style={{ minWidth: 90, ...extraStyle }}
+                        onClick={() => setNewTime(h)}
+                      >
+                        <div className="d-flex flex-column">
+                          <span>{h}</span>
+                          <small
+                            className="d-flex align-items-center justify-content-center text-center"
+                            style={{ fontSize: 11, minHeight: 28, lineHeight: "14px" }}
+                          >
+                            {full
+                              ? "Lleno"
+                              : free === MAX_CUPOS
+                              ? "Disponible"
+                              : free === 1
+                              ? "Último cupo"
+                              : `${free} cupos disp.`}
+                          </small>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="d-flex gap-2">
