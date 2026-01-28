@@ -122,7 +122,7 @@ export default function ClientBook() {
             reservation_date: date,
             reservation_time: hour,
           }),
-        }
+        },
       );
 
       const data = await res.json();
@@ -159,7 +159,6 @@ export default function ClientBook() {
     <div className="container-fluid">
       <div className="row justify-content-center">
         <div className="col-12 col-lg-6">
-
           {/* ================= STEPPER ================= */}
           <div className="card border-0 shadow-sm rounded-4 mb-4">
             <div className="card-body d-flex justify-content-between text-center">
@@ -175,14 +174,17 @@ export default function ClientBook() {
                       style={{
                         width: 42,
                         height: 42,
-                        background: done || active ? "var(--purple-main)" : "#e5e7eb",
+                        background:
+                          done || active ? "var(--purple-main)" : "#e5e7eb",
                         color: done || active ? "#fff" : "#6b7280",
                         fontWeight: 600,
                       }}
                     >
                       {current}
                     </div>
-                    <small className={active || done ? "fw-semibold" : "text-muted"}>
+                    <small
+                      className={active || done ? "fw-semibold" : "text-muted"}
+                    >
                       {label}
                     </small>
                   </div>
@@ -198,7 +200,9 @@ export default function ClientBook() {
                 <h6 className="mb-2 text-center">Selecciona un día</h6>
 
                 <div className="mb-4">
-                  <label className="form-label fw-semibold">Fecha de entrenamiento</label>
+                  <label className="form-label fw-semibold">
+                    Fecha de entrenamiento
+                  </label>
                   <input
                     type="date"
                     className="form-control form-control-lg rounded-3"
@@ -212,7 +216,7 @@ export default function ClientBook() {
                         Swal.fire(
                           "Día no disponible",
                           "Solo puedes reservar de lunes a viernes",
-                          "info"
+                          "info",
                         );
                         return;
                       }
@@ -224,7 +228,10 @@ export default function ClientBook() {
                   />
                 </div>
 
-                <button className="btn btn-primary btn-lg w-100" onClick={() => setStep(2)}>
+                <button
+                  className="btn btn-primary btn-lg w-100"
+                  onClick={() => setStep(2)}
+                >
                   Continuar
                 </button>
               </div>
@@ -275,9 +282,11 @@ export default function ClientBook() {
                           <small style={{ fontSize: 11 }}>
                             {full
                               ? "Lleno"
-                              : free === 1
-                              ? "Último cupo"
-                              : `${free}/${MAX_CUPOS} cupos`}
+                              : free === MAX_CUPOS
+                                ? "Disponible"
+                                : free === 1
+                                  ? "Último cupo"
+                                  : `${free} cupos disponibles`}
                           </small>
                         </div>
                       </button>
@@ -286,11 +295,18 @@ export default function ClientBook() {
                 </div>
 
                 <div className="d-flex gap-2">
-                  <button className="btn btn-outline-secondary w-50" onClick={() => setStep(1)}>
+                  <button
+                    className="btn btn-outline-secondary w-50"
+                    onClick={() => setStep(1)}
+                  >
                     Volver
                   </button>
 
-                  <button className="btn btn-primary w-50" disabled={!hour} onClick={() => setStep(3)}>
+                  <button
+                    className="btn btn-primary w-50"
+                    disabled={!hour}
+                    onClick={() => setStep(3)}
+                  >
                     Continuar
                   </button>
                 </div>
@@ -305,23 +321,33 @@ export default function ClientBook() {
                 <h6 className="mb-3">Confirmar reserva</h6>
 
                 <div className="border rounded-3 p-3 mb-4">
-                  <p className="mb-1"><strong>Fecha:</strong> {formatDateCL(date)}</p>
-                  <p className="mb-0"><strong>Hora:</strong> {hour}</p>
+                  <p className="mb-1">
+                    <strong>Fecha:</strong> {formatDateCL(date)}
+                  </p>
+                  <p className="mb-0">
+                    <strong>Hora:</strong> {hour}
+                  </p>
                 </div>
 
                 <div className="d-flex gap-2">
-                  <button className="btn btn-outline-secondary w-50" onClick={() => setStep(2)}>
+                  <button
+                    className="btn btn-outline-secondary w-50"
+                    onClick={() => setStep(2)}
+                  >
                     Volver
                   </button>
 
-                  <button className="btn btn-primary w-50" disabled={loading} onClick={confirmReservation}>
+                  <button
+                    className="btn btn-primary w-50"
+                    disabled={loading}
+                    onClick={confirmReservation}
+                  >
                     {loading ? "Reservando..." : "Confirmar"}
                   </button>
                 </div>
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>
