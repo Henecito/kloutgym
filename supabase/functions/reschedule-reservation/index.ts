@@ -174,6 +174,18 @@ serve(async (req) => {
     }
 
     /* =========================
+       🚫 BLOQUEAR FINES DE SEMANA
+    ========================= */
+    const day = selectedDate.getDay(); // 0 domingo, 6 sábado
+
+    if (day === 0 || day === 6) {
+      return new Response(
+        JSON.stringify({ error: "Solo se permiten reservas de lunes a viernes" }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    /* =========================
        7️⃣ VALIDAR HORARIO
     ========================= */
     const minutes = Number(nh) * 60 + Number(nmin);

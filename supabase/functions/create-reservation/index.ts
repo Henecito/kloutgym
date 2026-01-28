@@ -36,7 +36,7 @@ serve(async (req) => {
             Authorization: req.headers.get("Authorization")!,
           },
         },
-      },
+      }
     );
 
     const {
@@ -72,7 +72,7 @@ serve(async (req) => {
     if (profile?.role !== "client") {
       return new Response(
         JSON.stringify({ error: "Solo clientes pueden reservar" }),
-        { status: 403, headers: corsHeaders },
+        { status: 403, headers: corsHeaders }
       );
     }
 
@@ -81,16 +81,14 @@ serve(async (req) => {
     ========================= */
     const { data: plan } = await supabase
       .from("client_plans")
-      .select(
-        `
+      .select(`
         id,
         start_date,
         end_date,
         sessions_total,
         sessions_used,
         status
-      `,
-      )
+      `)
       .eq("client_id", user.id)
       .eq("status", "active")
       .maybeSingle();
@@ -98,7 +96,7 @@ serve(async (req) => {
     if (!plan) {
       return new Response(
         JSON.stringify({ error: "No tienes un plan activo" }),
-        { status: 403, headers: corsHeaders },
+        { status: 403, headers: corsHeaders }
       );
     }
 
@@ -121,7 +119,7 @@ serve(async (req) => {
     if (plan.sessions_used >= plan.sessions_total) {
       return new Response(
         JSON.stringify({ error: "No te quedan sesiones disponibles" }),
-        { status: 403, headers: corsHeaders },
+        { status: 403, headers: corsHeaders }
       );
     }
 
@@ -131,14 +129,26 @@ serve(async (req) => {
     if (resDate < planStart || resDate > planEnd) {
       return new Response(
         JSON.stringify({ error: "La fecha está fuera del rango de tu plan" }),
-        { status: 403, headers: corsHeaders },
+        { status: 403, headers: corsHeaders }
       );
     }
 
     if (resDate < today) {
       return new Response(
         JSON.stringify({ error: "No puedes reservar fechas pasadas" }),
-        { status: 400, headers: corsHeaders },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    /* =========================
+       🚫 BLOQUEAR FINES DE SEMANA
+    ========================= */
+    const day = resDate.getDay(); // 0 = domingo, 6 = sábado
+
+    if (day === 0 || day === 6) {
+      return new Response(
+        JSON.stringify({ error: "Solo se permiten reservas de lunes a viernes" }),
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -155,7 +165,7 @@ serve(async (req) => {
     if (reservationDateTime <= chileNow) {
       return new Response(
         JSON.stringify({ error: "No puedes reservar en un horario pasado" }),
-        { status: 400, headers: corsHeaders },
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -191,10 +201,8 @@ serve(async (req) => {
 
     if ((activeTotal ?? 0) > 0) {
       return new Response(
-        JSON.stringify({
-          error: "Ya tienes una reserva activa.",
-        }),
-        { status: 409, headers: corsHeaders },
+        JSON.stringify({ error: "Ya tienes una reserva activa." }),
+        { status: 409, headers: corsHeaders }
       );
     }
 
@@ -218,7 +226,7 @@ serve(async (req) => {
     if ((hourCount ?? 0) >= 5) {
       return new Response(
         JSON.stringify({ error: "Cupo lleno para ese horario" }),
-        { status: 409, headers: corsHeaders },
+        { status: 409, headers: corsHeaders }
       );
     }
 

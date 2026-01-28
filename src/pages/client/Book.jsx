@@ -42,7 +42,7 @@ export default function ClientBook() {
     "18:30",
     "19:30",
     "20:30",
-    "21:30"
+    "21:30",
   ];
 
   /* =========================
@@ -79,7 +79,7 @@ export default function ClientBook() {
   ========================= */
   useEffect(() => {
     if (step === 2 && date) {
-      setAvailability({}); // 🔥 limpia cupos anteriores
+      setAvailability({});
       fetchAvailability(date);
     }
   }, [step, date]);
@@ -205,9 +205,21 @@ export default function ClientBook() {
                     min={todayISO}
                     value={date}
                     onChange={(e) => {
+                      const selected = new Date(e.target.value);
+                      const day = selected.getDay();
+
+                      if (day === 0 || day === 6) {
+                        Swal.fire(
+                          "Día no disponible",
+                          "Solo puedes reservar de lunes a viernes",
+                          "info"
+                        );
+                        return;
+                      }
+
                       setDate(e.target.value);
                       setHour("");
-                      setAvailability({}); // 🔥 limpia al cambiar fecha
+                      setAvailability({});
                     }}
                   />
                 </div>

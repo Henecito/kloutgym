@@ -309,7 +309,21 @@ export default function ClientSessions() {
                   className="form-control mb-3"
                   value={newDate}
                   min={new Date().toISOString().split("T")[0]}
-                  onChange={(e) => setNewDate(e.target.value)}
+                  onChange={(e) => {
+                    const selected = new Date(e.target.value);
+                    const day = selected.getDay(); // 0 domingo, 6 sábado
+
+                    if (day === 0 || day === 6) {
+                      Swal.fire(
+                        "Día no disponible",
+                        "Solo puedes reprogramar de lunes a viernes",
+                        "info"
+                      );
+                      return;
+                    }
+
+                    setNewDate(e.target.value);
+                  }}
                 />
 
                 <label className="form-label fw-semibold">Hora</label>
