@@ -279,7 +279,14 @@ export default function ClientBook() {
                       >
                         <div className="d-flex flex-column">
                           <span>{h}</span>
-                          <small style={{ fontSize: 11 }}>
+                          <small
+                            className="d-flex align-items-center justify-content-center text-center"
+                            style={{
+                              fontSize: 11,
+                              minHeight: 28,
+                              lineHeight: "14px",
+                            }}
+                          >
                             {full
                               ? "Lleno"
                               : free === MAX_CUPOS
