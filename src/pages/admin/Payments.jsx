@@ -185,6 +185,7 @@ export default function Payments() {
 
   function getBadge(days) {
     if (days < 0) return { color: "danger", label: "Vencido" };
+    if (days <= 1) return { color: "danger", label: "Muy urgente" };
     if (days <= 3) return { color: "warning", label: "Urgente" };
     if (days <= 7) return { color: "warning", label: "Por vencer" };
     return { color: "success", label: "Activo" };
