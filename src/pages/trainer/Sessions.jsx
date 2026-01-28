@@ -93,7 +93,7 @@ export default function Sessions() {
 
   useEffect(() => {
     loadAgenda();
-  }, []);
+  }, [today]); // 👈 recarga al cambiar fecha
 
   /* =========================
      ASISTIÓ
@@ -159,9 +159,17 @@ export default function Sessions() {
             style={{ background: "linear-gradient(135deg, #6f42c1, #8b5cf6)" }}
           >
             <h4 className="mb-1">Agenda entrenador</h4>
-            <p className="opacity-75 mb-0">
+            <p className="opacity-75 mb-2">
               {formatDateCL(today)}
             </p>
+
+            {/* 📅 CALENDARIO */}
+            <input
+              type="date"
+              className="form-control form-control-sm"
+              value={today}
+              onChange={(e) => setToday(e.target.value)}
+            />
           </div>
 
           {/* LOADING */}
@@ -174,10 +182,10 @@ export default function Sessions() {
           {/* HOY */}
           {!loading && (
             <>
-              <SectionTitle title="Hoy" />
+              <SectionTitle title="Sesiones del día" />
 
               {todaySessions.length === 0 && (
-                <Empty text="No tienes sesiones hoy" />
+                <Empty text="No tienes sesiones este día" />
               )}
 
               {todaySessions.map((r) => (
@@ -234,7 +242,6 @@ function SessionCard({ r, onFinish, onCancel }) {
     <div className="card border-0 shadow-sm rounded-4 mb-3">
       <div className="card-body">
 
-        {/* INFO */}
         <div className="d-flex align-items-center gap-3 mb-3">
           <TimeBlock time={r.reservation_time} />
 
@@ -251,7 +258,6 @@ function SessionCard({ r, onFinish, onCancel }) {
           </div>
         </div>
 
-        {/* ACTIONS */}
         {r.status === "active" ? (
           <div className="d-flex flex-column flex-sm-row gap-2">
             <button
