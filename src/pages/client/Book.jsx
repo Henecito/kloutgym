@@ -32,7 +32,17 @@ export default function ClientBook() {
   const [loadingHours, setLoadingHours] = useState(false);
 
   const hours = [
-    "06:00"
+    "06:00",
+    "08:00",
+    "09:00",
+    "10:00",
+    "11:00",
+    "12:00",
+    "13:00",
+    "18:30",
+    "19:30",
+    "20:30",
+    "21:30"
   ];
 
   /* =========================
