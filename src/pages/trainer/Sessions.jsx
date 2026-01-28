@@ -96,16 +96,16 @@ export default function Sessions() {
   }, []);
 
   /* =========================
-     FINALIZAR SESIÓN
+     ASISTIÓ
   ========================== */
   async function finishSession(id) {
     const confirm = await Swal.fire({
-      title: "Finalizar sesión",
-      text: "Esto marcará la asistencia",
+      title: "Marcar asistencia",
+      text: "Confirma que el cliente asistió a la sesión",
       icon: "question",
       showCancelButton: true,
-      confirmButtonText: "Finalizar",
-      cancelButtonText: "Cancelar",
+      confirmButtonText: "Sí, asistió",
+      cancelButtonText: "Volver",
       confirmButtonColor: "#6f42c1",
     });
 
@@ -116,17 +116,17 @@ export default function Sessions() {
       await loadAgenda();
       Swal.fire("Listo", "Asistencia registrada", "success");
     } catch (e) {
-      Swal.fire("Error", "No se pudo finalizar", "error");
+      Swal.fire("Error", "No se pudo registrar", "error");
     }
   }
 
   /* =========================
-     NO ASISTIÓ / CANCELAR
+     NO ASISTIÓ
   ========================== */
   async function cancelSession(id) {
     const confirm = await Swal.fire({
-      title: "Marcar como no asistió",
-      text: "Esto cancelará la sesión y no se descontará",
+      title: "Marcar no asistencia",
+      text: "Esto cancelará la sesión y no se descontará del plan",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sí, no asistió",
@@ -139,7 +139,7 @@ export default function Sessions() {
     try {
       await cancelReservation(id);
       await loadAgenda();
-      Swal.fire("Listo", "Sesión cancelada", "success");
+      Swal.fire("Listo", "Sesión marcada como no asistida", "success");
     } catch (e) {
       Swal.fire("Error", "No se pudo cancelar", "error");
     }
@@ -232,15 +232,17 @@ function Empty({ text }) {
 function SessionCard({ r, onFinish, onCancel }) {
   return (
     <div className="card border-0 shadow-sm rounded-4 mb-3">
-      <div className="card-body d-flex justify-content-between align-items-center">
+      <div className="card-body">
 
-        <div className="d-flex align-items-center gap-3">
+        {/* INFO */}
+        <div className="d-flex align-items-center gap-3 mb-3">
           <TimeBlock time={r.reservation_time} />
 
-          <div>
+          <div className="flex-grow-1">
             <div className="fw-semibold">
               {r.profiles?.name} {r.profiles?.lastname}
             </div>
+
             {r.profiles?.phone && (
               <div className="text-muted small">
                 📞 {r.profiles.phone}
@@ -249,27 +251,34 @@ function SessionCard({ r, onFinish, onCancel }) {
           </div>
         </div>
 
+        {/* ACTIONS */}
         {r.status === "active" ? (
-          <div className="d-flex gap-2">
+          <div className="d-flex flex-column flex-sm-row gap-2">
             <button
-              className="btn btn-sm text-white"
+              className="btn btn-sm w-100 text-white"
               style={{ background: "#6f42c1" }}
               onClick={() => onFinish(r.id)}
             >
-              Finalizar
+              Asistió
             </button>
 
             <button
-              className="btn btn-sm btn-outline-danger"
+              className="btn btn-sm w-100 btn-outline-danger"
               onClick={() => onCancel(r.id)}
             >
-              No vino
+              No asistió
             </button>
           </div>
         ) : (
-          <span className={`badge ${r.attended ? "bg-success" : "bg-secondary"}`}>
-            {r.attended ? "Asistió" : "No asistió"}
-          </span>
+          <div className="text-end">
+            <span
+              className={`badge px-3 py-2 ${
+                r.attended ? "bg-success" : "bg-secondary"
+              }`}
+            >
+              {r.attended ? "Asistió" : "No asistió"}
+            </span>
+          </div>
         )}
       </div>
     </div>
