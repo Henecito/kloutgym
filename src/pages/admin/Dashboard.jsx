@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../services/supabase";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -78,6 +81,7 @@ export default function Dashboard() {
               value={data.clients}
               icon="👤"
               gradient="linear-gradient(135deg, #6f42c1, #8b5cf6)"
+              onClick={() => navigate("/admin/clientes")}
             />
 
             <StatCard
@@ -85,6 +89,7 @@ export default function Dashboard() {
               value={data.trainers}
               icon="🏋️"
               gradient="linear-gradient(135deg, #0d6efd, #4dabf7)"
+              onClick={() => navigate("/admin/entrenadores")}
             />
 
             <StatCard
@@ -92,6 +97,7 @@ export default function Dashboard() {
               value={data.plans}
               icon="📋"
               gradient="linear-gradient(135deg, #198754, #51cf66)"
+              onClick={() => navigate("/admin/pagos")}
             />
           </div>
 
@@ -113,12 +119,13 @@ export default function Dashboard() {
    COMPONENTES UI
 ========================= */
 
-function StatCard({ title, value, icon, gradient }) {
+function StatCard({ title, value, icon, gradient, onClick }) {
   return (
     <div className="col-12 col-md-4">
       <div
         className="card border-0 text-white shadow-sm rounded-5 h-100"
-        style={{ background: gradient }}
+        style={{ background: gradient, cursor: "pointer" }}
+        onClick={onClick}
       >
         <div className="card-body p-4 d-flex justify-content-between align-items-center">
           <div>
