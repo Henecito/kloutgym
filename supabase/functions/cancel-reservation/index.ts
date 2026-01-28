@@ -117,7 +117,6 @@ serve(async (req) => {
       .from("reservations")
       .update({
         status: "cancelled",
-        cancelled_at: new Date().toISOString(), // opcional (si tienes columna)
       })
       .eq("id", reservation_id);
 
