@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../services/supabase";
 import { getAsistenciaHoyTrainer } from "../../services/trainerAttendanceService";
 
@@ -26,6 +27,8 @@ const formatDateCL = (dateString) => {
 };
 
 export default function TrainerDashboard() {
+  const navigate = useNavigate();
+
   const [loading, setLoading] = useState(true);
   const [trainerName, setTrainerName] = useState("");
 
@@ -120,7 +123,6 @@ export default function TrainerDashboard() {
     }
 
     setNextSession(next);
-
     setLoading(false);
   }
 
@@ -151,22 +153,39 @@ export default function TrainerDashboard() {
       {/* METRICS */}
       <div className="row g-3 mb-4">
 
-        <MetricCard title="Sesiones hoy" value={todayTotal} subtitle="agendadas" />
+        <MetricCard
+          title="Sesiones hoy"
+          value={todayTotal}
+          subtitle="agendadas"
+          onClick={() => navigate("/trainer/sesiones?date=today")}
+        />
 
-        <MetricCard title="Pendientes hoy" value={todayPending} subtitle="por realizar" />
+        <MetricCard
+          title="Pendientes hoy"
+          value={todayPending}
+          subtitle="por realizar"
+          onClick={() => navigate("/trainer/sesiones?filter=active")}
+        />
 
-        <MetricCard title="Próximas" value={upcomingTotal} subtitle="en agenda" />
+        <MetricCard
+          title="Próximas"
+          value={upcomingTotal}
+          subtitle="en agenda"
+          onClick={() => navigate("/trainer/sesiones")}
+        />
 
-        {/* ASISTENCIA PRO */}
+        {/* ASISTENCIA */}
         <div className="col-12 col-md-4">
           <div
             className="card border-0 shadow-sm rounded-4 h-100"
             style={{
+              cursor: "pointer",
               background: attendanceToday
                 ? "linear-gradient(135deg, #22c55e, #4ade80)"
                 : "linear-gradient(135deg, #f59e0b, #facc15)",
               color: "white",
             }}
+            onClick={() => navigate("/trainer/asistencia")}
           >
             <div className="card-body p-4 d-flex flex-column justify-content-between">
               <div>
@@ -213,7 +232,9 @@ export default function TrainerDashboard() {
               style={{
                 background: "#f4f1ff",
                 border: "1px solid #ece9ff",
+                cursor: "pointer",
               }}
+              onClick={() => navigate("/trainer/sesiones")}
             >
               <div>
                 <div className="fw-semibold fs-5" style={{ color: "#6f42c1" }}>
@@ -238,10 +259,14 @@ export default function TrainerDashboard() {
 /* =========================
    COMPONENTE
 ========================= */
-function MetricCard({ title, value, subtitle }) {
+function MetricCard({ title, value, subtitle, onClick }) {
   return (
     <div className="col-12 col-md-4">
-      <div className="card border-0 shadow-sm rounded-4 h-100">
+      <div
+        className="card border-0 shadow-sm rounded-4 h-100"
+        style={{ cursor: "pointer" }}
+        onClick={onClick}
+      >
         <div className="card-body p-4">
           <div className="text-muted small mb-1">{title}</div>
           <div className="fw-bold fs-2" style={{ color: "#6f42c1" }}>
