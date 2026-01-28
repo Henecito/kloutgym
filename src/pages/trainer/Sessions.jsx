@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { supabase } from "../../services/supabase";
-import { finishReservation } from "../../services/reservations.service";
+import {
+  finishReservation,
+  cancelReservation,
+} from "../../services/reservations.service";
 
 /* =========================
    HELPERS FECHAS (OK TZ)
@@ -31,7 +34,7 @@ const labelDate = (dateString) => {
   const date = parseDate(dateString);
 
   const diff =
-    (date.setHours(0,0,0,0) - today.setHours(0,0,0,0)) /
+    (date.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0)) /
     (1000 * 60 * 60 * 24);
 
   if (diff === 0) return "Hoy";
@@ -56,7 +59,6 @@ export default function Sessions() {
   async function loadAgenda() {
     setLoading(true);
 
-    /* HOY */
     const { data: todayData } = await supabase
       .from("reservations")
       .select(`
@@ -70,7 +72,6 @@ export default function Sessions() {
       .eq("reservation_date", today)
       .order("reservation_time", { ascending: true });
 
-    /* PRÓXIMAS */
     const { data: upcomingData } = await supabase
       .from("reservations")
       .select(`
@@ -120,6 +121,31 @@ export default function Sessions() {
   }
 
   /* =========================
+     NO ASISTIÓ / CANCELAR
+  ========================== */
+  async function cancelSession(id) {
+    const confirm = await Swal.fire({
+      title: "Marcar como no asistió",
+      text: "Esto cancelará la sesión y no se descontará",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, no asistió",
+      cancelButtonText: "Volver",
+      confirmButtonColor: "#dc3545",
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      await cancelReservation(id);
+      await loadAgenda();
+      Swal.fire("Listo", "Sesión cancelada", "success");
+    } catch (e) {
+      Swal.fire("Error", "No se pudo cancelar", "error");
+    }
+  }
+
+  /* =========================
      RENDER
   ========================== */
   return (
@@ -158,8 +184,8 @@ export default function Sessions() {
                 <SessionCard
                   key={r.id}
                   r={r}
-                  today
                   onFinish={finishSession}
+                  onCancel={cancelSession}
                 />
               ))}
             </>
@@ -203,7 +229,7 @@ function Empty({ text }) {
   );
 }
 
-function SessionCard({ r, onFinish }) {
+function SessionCard({ r, onFinish, onCancel }) {
   return (
     <div className="card border-0 shadow-sm rounded-4 mb-3">
       <div className="card-body d-flex justify-content-between align-items-center">
@@ -224,13 +250,22 @@ function SessionCard({ r, onFinish }) {
         </div>
 
         {r.status === "active" ? (
-          <button
-            className="btn btn-sm text-white"
-            style={{ background: "#6f42c1" }}
-            onClick={() => onFinish(r.id)}
-          >
-            Finalizar
-          </button>
+          <div className="d-flex gap-2">
+            <button
+              className="btn btn-sm text-white"
+              style={{ background: "#6f42c1" }}
+              onClick={() => onFinish(r.id)}
+            >
+              Finalizar
+            </button>
+
+            <button
+              className="btn btn-sm btn-outline-danger"
+              onClick={() => onCancel(r.id)}
+            >
+              No vino
+            </button>
+          </div>
         ) : (
           <span className={`badge ${r.attended ? "bg-success" : "bg-secondary"}`}>
             {r.attended ? "Asistió" : "No asistió"}
