@@ -164,7 +164,7 @@ serve(async (req) => {
     ========================= */
     const minutes = hour * 60 + minute;
 
-    const AM_START = 8 * 60;
+    const AM_START = 6 * 60;
     const AM_END = 14 * 60;
     const PM_START = 18 * 60 + 30;
     const PM_END = 22 * 60 + 30;
