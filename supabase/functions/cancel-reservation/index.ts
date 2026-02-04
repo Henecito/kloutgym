@@ -36,7 +36,7 @@ serve(async (req) => {
             Authorization: req.headers.get("Authorization")!,
           },
         },
-      }
+      },
     );
 
     const {
@@ -76,7 +76,26 @@ serve(async (req) => {
       });
     }
 
-    if (reservation.client_id !== user.id) {
+    /* =========================
+   2.5️⃣ VALIDAR PERMISOS
+========================= */
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return new Response(JSON.stringify({ error: "Perfil no encontrado" }), {
+        status: 403,
+        headers: corsHeaders,
+      });
+    }
+
+    const isClientOwner = reservation.client_id === user.id;
+    const isTrainer = profile.role === "trainer";
+
+    if (!isClientOwner && !isTrainer) {
       return new Response(JSON.stringify({ error: "No autorizado" }), {
         status: 403,
         headers: corsHeaders,
@@ -86,27 +105,7 @@ serve(async (req) => {
     if (reservation.status !== "active") {
       return new Response(
         JSON.stringify({ error: "Esta reserva no se puede cancelar" }),
-        { status: 409, headers: corsHeaders }
-      );
-    }
-
-    /* =========================
-       3️⃣ BLOQUEAR SI YA PASÓ 🇨🇱
-    ========================= */
-    const [hour, minute] = reservation.reservation_time
-      .slice(0, 5)
-      .split(":")
-      .map(Number);
-
-    const reservationDateTime = new Date(reservation.reservation_date);
-    reservationDateTime.setHours(hour, minute, 0, 0);
-
-    const chileNow = getChileNow();
-
-    if (reservationDateTime <= chileNow) {
-      return new Response(
-        JSON.stringify({ error: "No puedes cancelar una sesión pasada" }),
-        { status: 400, headers: corsHeaders }
+        { status: 409, headers: corsHeaders },
       );
     }
 

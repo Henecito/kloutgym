@@ -46,6 +46,14 @@ const labelDate = (dateString) => {
   });
 };
 
+/* =========================
+   🔹 FORMATEAR HORA
+========================= */
+const formatTime = (time) => {
+  if (!time) return "";
+  return time.slice(0, 5); // HH:MM:SS → HH:MM
+};
+
 export default function Sessions() {
   const [today, setToday] = useState(todayISO());
   const [loading, setLoading] = useState(true);
@@ -61,27 +69,33 @@ export default function Sessions() {
 
     const { data: todayData } = await supabase
       .from("reservations")
-      .select(`
-        id,
-        reservation_date,
-        reservation_time,
-        status,
-        attended,
-        profiles ( name, lastname, phone )
-      `)
+      .select(
+        `
+    id,
+    reservation_date,
+    reservation_time,
+    status,
+    attended,
+    profiles ( name, lastname, phone )
+  `,
+      )
       .eq("reservation_date", today)
+      .eq("status", "active")
       .order("reservation_time", { ascending: true });
 
     const { data: upcomingData } = await supabase
       .from("reservations")
-      .select(`
-        id,
-        reservation_date,
-        reservation_time,
-        status,
-        profiles ( name, lastname )
-      `)
+      .select(
+        `
+    id,
+    reservation_date,
+    reservation_time,
+    status,
+    profiles ( name, lastname )
+  `,
+      )
       .gt("reservation_date", today)
+      .eq("status", "active")
       .order("reservation_date", { ascending: true })
       .order("reservation_time", { ascending: true })
       .limit(15);
@@ -93,7 +107,7 @@ export default function Sessions() {
 
   useEffect(() => {
     loadAgenda();
-  }, [today]); // 👈 recarga al cambiar fecha
+  }, [today]);
 
   /* =========================
      ASISTIÓ
@@ -115,7 +129,7 @@ export default function Sessions() {
       await finishReservation(id);
       await loadAgenda();
       Swal.fire("Listo", "Asistencia registrada", "success");
-    } catch (e) {
+    } catch {
       Swal.fire("Error", "No se pudo registrar", "error");
     }
   }
@@ -140,7 +154,7 @@ export default function Sessions() {
       await cancelReservation(id);
       await loadAgenda();
       Swal.fire("Listo", "Sesión marcada como no asistida", "success");
-    } catch (e) {
+    } catch {
       Swal.fire("Error", "No se pudo cancelar", "error");
     }
   }
@@ -152,18 +166,14 @@ export default function Sessions() {
     <div className="container-fluid">
       <div className="row justify-content-center">
         <div className="col-12 col-xl-7">
-
           {/* HEADER */}
           <div
             className="rounded-4 p-4 mb-4 text-white"
             style={{ background: "linear-gradient(135deg, #6f42c1, #8b5cf6)" }}
           >
             <h4 className="mb-1">Agenda entrenador</h4>
-            <p className="opacity-75 mb-2">
-              {formatDateCL(today)}
-            </p>
+            <p className="opacity-75 mb-2">{formatDateCL(today)}</p>
 
-            {/* 📅 CALENDARIO */}
             <input
               type="date"
               className="form-control form-control-sm"
@@ -172,14 +182,12 @@ export default function Sessions() {
             />
           </div>
 
-          {/* LOADING */}
           {loading && (
             <div className="text-center py-5 text-muted">
               Cargando agenda...
             </div>
           )}
 
-          {/* HOY */}
           {!loading && (
             <>
               <SectionTitle title="Sesiones del día" />
@@ -199,7 +207,6 @@ export default function Sessions() {
             </>
           )}
 
-          {/* PROXIMAS */}
           {!loading && upcomingSessions.length > 0 && (
             <>
               <SectionTitle title="Próximas sesiones" />
@@ -221,18 +228,14 @@ export default function Sessions() {
 
 function SectionTitle({ title }) {
   return (
-    <h6 className="fw-semibold text-uppercase text-muted mb-3 mt-4">
-      {title}
-    </h6>
+    <h6 className="fw-semibold text-uppercase text-muted mb-3 mt-4">{title}</h6>
   );
 }
 
 function Empty({ text }) {
   return (
     <div className="card border-0 shadow-sm rounded-4 mb-3">
-      <div className="card-body text-center text-muted py-4">
-        {text}
-      </div>
+      <div className="card-body text-center text-muted py-4">{text}</div>
     </div>
   );
 }
@@ -241,7 +244,6 @@ function SessionCard({ r, onFinish, onCancel }) {
   return (
     <div className="card border-0 shadow-sm rounded-4 mb-3">
       <div className="card-body">
-
         <div className="d-flex align-items-center gap-3 mb-3">
           <TimeBlock time={r.reservation_time} />
 
@@ -251,9 +253,7 @@ function SessionCard({ r, onFinish, onCancel }) {
             </div>
 
             {r.profiles?.phone && (
-              <div className="text-muted small">
-                📞 {r.profiles.phone}
-              </div>
+              <div className="text-muted small">📞 {r.profiles.phone}</div>
             )}
           </div>
         </div>
@@ -295,7 +295,6 @@ function UpcomingCard({ r }) {
   return (
     <div className="card border-0 shadow-sm rounded-4 mb-2">
       <div className="card-body d-flex justify-content-between align-items-center">
-
         <div className="d-flex align-items-center gap-3">
           <TimeBlock time={r.reservation_time} />
 
@@ -309,9 +308,7 @@ function UpcomingCard({ r }) {
           </div>
         </div>
 
-        <span className="badge bg-light text-dark">
-          Próxima
-        </span>
+        <span className="badge bg-light text-dark">Próxima</span>
       </div>
     </div>
   );
@@ -328,7 +325,7 @@ function TimeBlock({ time }) {
         padding: "10px 12px",
       }}
     >
-      {time}
+      {formatTime(time)}
     </div>
   );
 }

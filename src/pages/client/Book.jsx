@@ -209,7 +209,8 @@ export default function ClientBook() {
                     min={todayISO}
                     value={date}
                     onChange={(e) => {
-                      const selected = new Date(e.target.value);
+                      const [y, m, d] = e.target.value.split("-");
+                      const selected = new Date(y, m - 1, d); // ✅ FIX
                       const day = selected.getDay();
 
                       if (day === 0 || day === 6) {
@@ -260,13 +261,25 @@ export default function ClientBook() {
                     let variant = "btn-outline-secondary";
                     let extraStyle = {};
 
-                    if (free === 3) variant = "btn-warning";
-                    if (free === 1) variant = "btn-danger";
+                    // 🟡 3 o 2 cupos
+                    if (free === 3 || free === 2) {
+                      variant = "btn-warning";
+                    }
+
+                    // 🔴 1 cupo o lleno
+                    if (free === 1 || full) {
+                      variant = "btn-danger";
+                    }
+
+                    // 🚫 lleno (además deshabilitado)
                     if (full) {
-                      variant = "btn-outline-secondary";
                       extraStyle = { opacity: 0.4, cursor: "not-allowed" };
                     }
-                    if (hour === h) variant = "btn-primary";
+
+                    // 🔵 seleccionado
+                    if (hour === h) {
+                      variant = "btn-primary";
+                    }
 
                     return (
                       <button

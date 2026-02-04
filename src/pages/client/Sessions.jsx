@@ -132,11 +132,7 @@ export default function ClientSessions() {
     try {
       setSaving(true);
 
-      await rescheduleReservation(
-        selectedReservation.id,
-        newDate,
-        newTime
-      );
+      await rescheduleReservation(selectedReservation.id, newDate, newTime);
 
       await loadReservations(user.id, true);
       Swal.fire("Listo", "Tu sesión fue reprogramada", "success");
@@ -178,7 +174,6 @@ export default function ClientSessions() {
   ========================= */
   return (
     <div className="container-fluid px-0">
-
       {/* HEADER */}
       <div className="d-flex justify-content-center mb-4">
         <div
@@ -209,7 +204,6 @@ export default function ClientSessions() {
 
       <div className="row justify-content-center">
         <div className="col-12 col-lg-7">
-
           {loading && (
             <div className="text-center py-5 text-muted">
               Cargando sesiones...
@@ -218,9 +212,7 @@ export default function ClientSessions() {
 
           {!loading && (
             <>
-              <h6 className="text-muted fw-semibold mb-3">
-                PRÓXIMAS SESIONES
-              </h6>
+              <h6 className="text-muted fw-semibold mb-3">PRÓXIMAS SESIONES</h6>
 
               {upcoming.length === 0 && (
                 <div className="text-center text-muted py-5">
@@ -241,7 +233,6 @@ export default function ClientSessions() {
                     }}
                   >
                     <div className="d-flex flex-wrap align-items-center gap-3">
-
                       {/* FECHA */}
                       <div
                         className="text-center px-3 py-2 rounded-4"
@@ -260,9 +251,7 @@ export default function ClientSessions() {
 
                       {/* INFO */}
                       <div className="flex-grow-1 min-w-0">
-                        <div className="fw-semibold mb-1">
-                          {d.full}
-                        </div>
+                        <div className="fw-semibold mb-1">{d.full}</div>
                         <div className="text-muted small">
                           ⏰ {r.reservation_time}
                         </div>
@@ -288,7 +277,6 @@ export default function ClientSessions() {
                           </button>
                         </div>
                       </div>
-
                     </div>
                   </div>
                 );
@@ -298,9 +286,7 @@ export default function ClientSessions() {
 
           {!loading && past.length > 0 && (
             <>
-              <h6 className="text-muted fw-semibold mt-4 mb-3">
-                HISTORIAL
-              </h6>
+              <h6 className="text-muted fw-semibold mt-4 mb-3">HISTORIAL</h6>
 
               {past.map((r) => {
                 const d = formatPrettyDate(r.reservation_date);
@@ -317,9 +303,7 @@ export default function ClientSessions() {
 
                     <span
                       className={`badge ${
-                        r.status === "finished"
-                          ? "bg-dark"
-                          : "bg-secondary"
+                        r.status === "finished" ? "bg-dark" : "bg-secondary"
                       }`}
                     >
                       {r.status === "finished" ? "Finalizada" : "Cancelada"}
@@ -341,7 +325,6 @@ export default function ClientSessions() {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 rounded-5">
               <div className="modal-body p-4">
-
                 <h5 className="fw-bold mb-1">Reprogramar sesión</h5>
                 <p className="text-muted small mb-3">
                   Elige una nueva fecha y horario
@@ -354,14 +337,15 @@ export default function ClientSessions() {
                   value={newDate}
                   min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => {
-                    const selected = new Date(e.target.value);
+                    const [y, m, d] = e.target.value.split("-");
+                    const selected = new Date(y, m - 1, d); // ✅ FIX
                     const day = selected.getDay();
 
                     if (day === 0 || day === 6) {
                       Swal.fire(
                         "Día no disponible",
                         "Solo puedes reprogramar de lunes a viernes",
-                        "info"
+                        "info",
                       );
                       return;
                     }
@@ -380,12 +364,25 @@ export default function ClientSessions() {
                     let variant = "btn-outline-secondary";
                     let extraStyle = {};
 
-                    if (free === 1) variant = "btn-danger";
+                    // 🟡 3 o 2 cupos
+                    if (free === 3 || free === 2) {
+                      variant = "btn-warning";
+                    }
+
+                    // 🔴 1 cupo o lleno
+                    if (free === 1 || full) {
+                      variant = "btn-danger";
+                    }
+
+                    // 🚫 lleno (deshabilitado)
                     if (full) {
-                      variant = "btn-outline-secondary";
                       extraStyle = { opacity: 0.4, cursor: "not-allowed" };
                     }
-                    if (newTime === h) variant = "btn-primary";
+
+                    // 🔵 seleccionado
+                    if (newTime === h) {
+                      variant = "btn-primary";
+                    }
 
                     return (
                       <button
@@ -400,15 +397,19 @@ export default function ClientSessions() {
                           <span>{h}</span>
                           <small
                             className="d-flex align-items-center justify-content-center text-center"
-                            style={{ fontSize: 11, minHeight: 28, lineHeight: "14px" }}
+                            style={{
+                              fontSize: 11,
+                              minHeight: 28,
+                              lineHeight: "14px",
+                            }}
                           >
                             {full
                               ? "Lleno"
                               : free === MAX_CUPOS
-                              ? "Disponible"
-                              : free === 1
-                              ? "Último cupo"
-                              : `${free} cupos disp.`}
+                                ? "Disponible"
+                                : free === 1
+                                  ? "Último cupo"
+                                  : `${free} cupos disp.`}
                           </small>
                         </div>
                       </button>
@@ -433,13 +434,11 @@ export default function ClientSessions() {
                     {saving ? "Guardando..." : "Confirmar"}
                   </button>
                 </div>
-
               </div>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

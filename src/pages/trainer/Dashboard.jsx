@@ -4,7 +4,7 @@ import { supabase } from "../../services/supabase";
 import { getAsistenciaHoyTrainer } from "../../services/trainerAttendanceService";
 
 /* =========================
-   HELPERS FECHAS
+   HELPERS FECHAS / HORAS
 ========================= */
 const todayISO = () => {
   const d = new Date();
@@ -24,6 +24,11 @@ const formatDateCL = (dateString) => {
     day: "numeric",
     month: "long",
   });
+};
+
+const formatTime = (timeString) => {
+  if (!timeString) return "";
+  return timeString.slice(0, 5); // HH:mm
 };
 
 export default function TrainerDashboard() {
@@ -76,11 +81,11 @@ export default function TrainerDashboard() {
       .from("reservations")
       .select("id, status, reservation_time")
       .eq("reservation_date", today)
+      .eq("status", "active")
       .order("reservation_time", { ascending: true });
 
     const totalToday = todayData?.length || 0;
-    const pendingToday =
-      todayData?.filter((r) => r.status === "active").length || 0;
+    const pendingToday = totalToday; // todas son active
 
     setTodayTotal(totalToday);
     setTodayPending(pendingToday);
@@ -88,13 +93,16 @@ export default function TrainerDashboard() {
     /* PRÓXIMAS */
     const { data: upcomingData } = await supabase
       .from("reservations")
-      .select(`
-        id,
-        reservation_date,
-        reservation_time,
-        profiles ( name, lastname )
-      `)
+      .select(
+        `
+    id,
+    reservation_date,
+    reservation_time,
+    profiles ( name, lastname )
+  `,
+      )
       .gt("reservation_date", today)
+      .eq("status", "active")
       .order("reservation_date", { ascending: true })
       .order("reservation_time", { ascending: true })
       .limit(10);
@@ -128,31 +136,23 @@ export default function TrainerDashboard() {
 
   if (loading) {
     return (
-      <div className="text-center text-muted py-5">
-        Cargando resumen...
-      </div>
+      <div className="text-center text-muted py-5">Cargando resumen...</div>
     );
   }
 
   return (
     <div className="container-fluid">
-
       {/* HEADER */}
       <div
         className="rounded-4 p-4 mb-4 text-white"
         style={{ background: "linear-gradient(135deg, #6f42c1, #8b5cf6)" }}
       >
-        <h4 className="mb-1">
-          Hola{trainerName ? `, ${trainerName}` : ""} 👋
-        </h4>
-        <p className="opacity-75 mb-0">
-          {formatDateCL(today)}
-        </p>
+        <h4 className="mb-1">Hola{trainerName ? `, ${trainerName}` : ""} 👋</h4>
+        <p className="opacity-75 mb-0">{formatDateCL(today)}</p>
       </div>
 
       {/* METRICS */}
       <div className="row g-3 mb-4">
-
         <MetricCard
           title="Sesiones hoy"
           value={todayTotal}
@@ -197,7 +197,7 @@ export default function TrainerDashboard() {
 
                 <div className="opacity-75 small">
                   {attendanceToday
-                    ? `Hoy a las ${attendanceToday.check_in_time.slice(0,5)}`
+                    ? `Hoy a las ${formatTime(attendanceToday.check_in_time)}`
                     : "Pendiente de marcar"}
                 </div>
               </div>
@@ -210,20 +210,15 @@ export default function TrainerDashboard() {
             </div>
           </div>
         </div>
-
       </div>
 
       {/* NEXT SESSION */}
       <div className="card border-0 shadow-sm rounded-4">
         <div className="card-body p-4">
-          <h6 className="fw-semibold mb-3 text-muted">
-            Próxima sesión
-          </h6>
+          <h6 className="fw-semibold mb-3 text-muted">Próxima sesión</h6>
 
           {!nextSession && (
-            <div className="text-muted">
-              No tienes próximas sesiones.
-            </div>
+            <div className="text-muted">No tienes próximas sesiones.</div>
           )}
 
           {nextSession && (
@@ -238,7 +233,7 @@ export default function TrainerDashboard() {
             >
               <div>
                 <div className="fw-semibold fs-5" style={{ color: "#6f42c1" }}>
-                  ⏰ {nextSession.time}
+                  ⏰ {formatTime(nextSession.time)}
                 </div>
                 <div className="text-muted small">
                   {formatDateCL(nextSession.date)}
