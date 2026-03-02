@@ -5,6 +5,7 @@ import {
   getTrainerAttendance,
   addManualTrainerAttendance
 } from "../../services/adminAttendanceService";
+import "../../styles/trainer.css";
 
 /* =========================
    PARSE FECHA DB (YYYY-MM-DD)

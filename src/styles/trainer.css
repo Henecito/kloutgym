@@ -1,0 +1,131 @@
+/* ================================
+   BACKDROP
+================================ */
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1050;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* ================================
+   MODAL BASE
+================================ */
+.modal-custom {
+  background: #ffffff;
+  width: 100%;
+  max-width: 720px;
+  border-radius: 22px;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.05);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleIn 0.18s ease-out;
+}
+
+/* ================================
+   HEADER
+================================ */
+.modal-header-custom {
+  padding: 18px 22px;
+  border-bottom: 1px solid #f1f1f1;
+  background: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+/* Botón cerrar visible y limpio */
+.modal-header-custom .btn-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.modal-header-custom .btn-close:hover {
+  opacity: 1;
+}
+
+/* ================================
+   BODY
+================================ */
+.modal-body-custom {
+  padding: 22px;
+  overflow-y: auto;
+}
+
+/* Scroll interno elegante */
+.modal-body-custom::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body-custom::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+
+/* ================================
+   FOOTER (si lo usas)
+================================ */
+.modal-footer-custom {
+  padding: 18px 22px;
+  border-top: 1px solid #f1f1f1;
+  background: #ffffff;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ================================
+   MOBILE OPTIMIZATION
+================================ */
+@media (max-width: 768px) {
+
+  .modal-backdrop-custom {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-custom {
+    max-width: 100%;
+    width: 100%;
+    max-height: 85vh;
+    border-radius: 22px 22px 0 0;
+    animation: slideUp 0.25s ease-out;
+  }
+
+  .modal-body-custom {
+    padding: 18px;
+  }
+}
+
+/* ================================
+   ANIMATIONS
+================================ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
