@@ -3,9 +3,6 @@ import { supabase } from "../../services/supabase";
 import Swal from "sweetalert2";
 
 export default function Clients() {
-  /* =========================
-     ESTADOS GENERALES
-  ========================== */
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
@@ -22,9 +19,6 @@ export default function Clients() {
 
   const [search, setSearch] = useState("");
 
-  /* =========================
-     FORM CREATE
-  ========================== */
   const [formData, setFormData] = useState({
     name: "",
     lastname: "",
@@ -34,9 +28,6 @@ export default function Clients() {
     start_date: "",
   });
 
-  /* =========================
-     FORM EDIT
-  ========================== */
   const [editData, setEditData] = useState({
     client_id: "",
     name: "",
@@ -61,9 +52,6 @@ export default function Clients() {
     setLoadingClients(false);
   };
 
-  /* =========================
-     FETCH PLANS
-  ========================== */
   const fetchPlans = async () => {
     const { data } = await supabase.from("plans").select("id, name");
     setPlans(data || []);
@@ -74,221 +62,109 @@ export default function Clients() {
     fetchPlans();
   }, []);
 
-  /* =========================
-     BLOQUEO SCROLL BODY
-  ========================== */
   useEffect(() => {
     document.body.style.overflow =
       showCreateModal || showEditModal || showPlanModal ? "hidden" : "";
     return () => (document.body.style.overflow = "");
   }, [showCreateModal, showEditModal, showPlanModal]);
 
-  /* =========================
-     FILTRADO
-  ========================== */
   const filteredClients = clients.filter((c) => {
     const full = `${c.name || ""} ${c.lastname || ""}`.toLowerCase();
     return full.includes(search.toLowerCase());
   });
 
-  /* =========================
-     HANDLERS
-  ========================== */
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleEditChange = (e) =>
     setEditData({ ...editData, [e.target.name]: e.target.value });
 
-  const openEditModal = (client) => {
-    setEditData({
-      client_id: client.id,
-      name: client.name || "",
-      lastname: client.lastname || "",
-      phone: client.phone || "",
-      email: client.email || "",
-    });
-    setShowEditModal(true);
-  };
-
-  const openPlanModal = async (client) => {
-    const { data } = await supabase
-      .from("client_plans")
-      .select("id, plan_id")
-      .eq("client_id", client.id)
-      .eq("status", "active")
-      .single();
-
-    setSelectedClient(client);
-    setClientPlanId(data?.id || null);
-    setSelectedPlan(data?.plan_id || "");
-    setShowPlanModal(true);
-  };
-
   /* =========================
-     CREAR CLIENTE
+     RESET PASSWORD
   ========================== */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleResetPassword = async (client) => {
+  const confirm = await Swal.fire({
+    title: "Resetear contraseña",
+    text: `¿Asignar nueva contraseña temporal a ${client.name}?`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, resetear",
+    cancelButtonText: "Cancelar",
+  });
 
-    const confirm = await Swal.fire({
-      title: "Crear cliente",
-      text: "¿Confirmas la creación del cliente?",
-      icon: "question",
+  if (!confirm.isConfirmed) return;
+
+  try {
+    setLoading(true);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const res = await fetch(
+      `${supabase.supabaseUrl}/functions/v1/admin-reset-password`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ user_id: client.id }),
+      }
+    );
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    const message = `
+Hola ${client.name} 👋
+
+Tu nueva contraseña temporal es:
+
+${data.tempPassword}
+
+Al ingresar deberás cambiarla inmediatamente.
+`;
+
+    const encodedMessage = encodeURIComponent(message);
+
+    // Asegúrate que el teléfono esté en formato internacional sin +
+    const phone = client.phone?.replace(/\D/g, "");
+
+    await Swal.fire({
+      title: "Contraseña generada",
+      html: `
+        <div style="font-size:18px;margin-top:10px">
+          <b>${data.tempPassword}</b>
+        </div>
+        <p style="margin-top:15px">
+          ¿Enviar por WhatsApp ahora?
+        </p>
+      `,
+      icon: "success",
       showCancelButton: true,
-      confirmButtonText: "Sí, crear",
-      cancelButtonText: "Cancelar",
+      confirmButtonText: "Enviar por WhatsApp",
+      cancelButtonText: "Cerrar",
+    }).then((result) => {
+      if (result.isConfirmed && phone) {
+        window.open(
+          `https://wa.me/${phone}?text=${encodedMessage}`,
+          "_blank"
+        );
+      }
     });
 
-    if (!confirm.isConfirmed) return;
+    await fetchClients();
+  } catch (err) {
+    Swal.fire("Error", err.message, "error");
+  } finally {
+    setLoading(false);
+  }
+};
 
-    try {
-      setLoading(true);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const res = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/create-client`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(formData),
-        }
-      );
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      Swal.fire("Listo", "Cliente creado correctamente", "success");
-
-      setFormData({
-        name: "",
-        lastname: "",
-        phone: "",
-        email: "",
-        plan_id: "",
-        start_date: "",
-      });
-
-      await fetchClients();
-      setShowCreateModal(false);
-    } catch (err) {
-      Swal.fire("Error", err.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* =========================
-     EDITAR CLIENTE
-  ========================== */
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-
-    const confirm = await Swal.fire({
-      title: "Guardar cambios",
-      text: "¿Deseas actualizar los datos del cliente?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Sí, guardar",
-      cancelButtonText: "Cancelar",
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    try {
-      setLoading(true);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const res = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/update-client`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(editData),
-        }
-      );
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      Swal.fire("Actualizado", "Cliente actualizado correctamente", "success");
-      await fetchClients();
-      setShowEditModal(false);
-    } catch (err) {
-      Swal.fire("Error", err.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* =========================
-     CAMBIAR PLAN
-  ========================== */
-  const handleChangePlan = async () => {
-    if (!selectedPlan || !clientPlanId) return;
-
-    const confirm = await Swal.fire({
-      title: "Cambiar plan",
-      text: "¿Confirmas el cambio de plan?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, cambiar",
-      cancelButtonText: "Cancelar",
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    try {
-      setLoading(true);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const res = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/change-plan`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            client_plan_id: clientPlanId,
-            new_plan_id: selectedPlan,
-          }),
-        }
-      );
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      Swal.fire("Listo", "Plan cambiado correctamente", "success");
-      setShowPlanModal(false);
-    } catch (err) {
-      Swal.fire("Error", err.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* =========================
-     RENDER
-  ========================== */
   return (
     <div className="h-100 d-flex flex-column">
+
       {/* HEADER */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
         <div>
@@ -319,9 +195,9 @@ export default function Clients() {
 
       {/* DESKTOP */}
       <div className="card border-0 shadow-sm rounded-4 d-none d-md-flex flex-column flex-grow-1">
-        <div className="table-responsive flex-grow-1" style={{ overflowY: "auto" }}>
+        <div className="table-responsive flex-grow-1">
           <table className="table mb-0">
-            <thead className="table-light sticky-top">
+            <thead className="table-light">
               <tr>
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Correo</th>
@@ -329,24 +205,7 @@ export default function Clients() {
                 <th className="px-4 py-3 text-end">Acciones</th>
               </tr>
             </thead>
-
             <tbody>
-              {loadingClients && (
-                <tr>
-                  <td colSpan="4" className="text-center py-5 text-muted">
-                    Cargando clientes...
-                  </td>
-                </tr>
-              )}
-
-              {!loadingClients && filteredClients.length === 0 && (
-                <tr>
-                  <td colSpan="4" className="text-center py-5 text-muted">
-                    Sin resultados
-                  </td>
-                </tr>
-              )}
-
               {filteredClients.map((client) => (
                 <tr key={client.id}>
                   <td className="px-4 py-3">
@@ -364,11 +223,19 @@ export default function Clients() {
                   </td>
                   <td className="px-4 py-3 text-end">
                     <button
+                      className="btn btn-sm btn-outline-warning me-2"
+                      onClick={() => handleResetPassword(client)}
+                    >
+                      Reset contraseña
+                    </button>
+
+                    <button
                       className="btn btn-sm btn-outline-primary me-2"
                       onClick={() => openEditModal(client)}
                     >
                       Editar
                     </button>
+
                     <button
                       className="btn btn-sm btn-outline-danger"
                       onClick={() => openPlanModal(client)}
@@ -384,7 +251,7 @@ export default function Clients() {
       </div>
 
       {/* MOBILE */}
-      <div className="d-block d-md-none flex-grow-1" style={{ overflowY: "auto" }}>
+      <div className="d-block d-md-none flex-grow-1">
         {filteredClients.map((client) => (
           <div key={client.id} className="card border-0 shadow-sm rounded-4 mb-3">
             <div className="card-body">
@@ -395,19 +262,29 @@ export default function Clients() {
 
               <div className="mb-3">
                 {client.must_change_password ? (
-                  <span className="badge bg-warning text-dark">No activada</span>
+                  <span className="badge bg-warning text-dark">
+                    No activada
+                  </span>
                 ) : (
                   <span className="badge bg-success">Activa</span>
                 )}
               </div>
 
-              <div className="d-flex gap-2">
+              <div className="d-flex flex-column gap-2">
+                <button
+                  className="btn btn-sm btn-outline-warning w-100"
+                  onClick={() => handleResetPassword(client)}
+                >
+                  Reset contraseña
+                </button>
+
                 <button
                   className="btn btn-sm btn-outline-primary w-100"
                   onClick={() => openEditModal(client)}
                 >
                   Editar
                 </button>
+
                 <button
                   className="btn btn-sm btn-outline-danger w-100"
                   onClick={() => openPlanModal(client)}
@@ -419,138 +296,6 @@ export default function Clients() {
           </div>
         ))}
       </div>
-
-      {/* MODALES */}
-      {showCreateModal && (
-        <CreateModal
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleSubmit}
-          loading={loading}
-          formData={formData}
-          handleChange={handleChange}
-          plans={plans}
-        />
-      )}
-
-      {showEditModal && (
-        <EditModal
-          onClose={() => setShowEditModal(false)}
-          onSubmit={handleUpdate}
-          loading={loading}
-          formData={editData}
-          handleChange={handleEditChange}
-        />
-      )}
-
-      {showPlanModal && (
-        <ChangePlanModal
-          onClose={() => setShowPlanModal(false)}
-          loading={loading}
-          client={selectedClient}
-          plans={plans}
-          selectedPlan={selectedPlan}
-          setSelectedPlan={setSelectedPlan}
-          onChangePlan={handleChangePlan}
-        />
-      )}
-    </div>
-  );
-}
-
-/* =========================
-   MODALES
-========================= */
-
-function CreateModal({ onClose, onSubmit, loading, formData, handleChange, plans }) {
-  return (
-    <ModalBase title="Nuevo cliente" onClose={onClose} onSubmit={onSubmit} loading={loading}>
-      <Input label="Nombre" name="name" value={formData.name} onChange={handleChange} />
-      <Input label="Apellido" name="lastname" value={formData.lastname} onChange={handleChange} />
-      <Input label="Teléfono" name="phone" value={formData.phone} onChange={handleChange} />
-      <Input label="Correo" name="email" type="email" value={formData.email} onChange={handleChange} />
-
-      <div className="mb-3">
-        <label className="form-label">Plan</label>
-        <select name="plan_id" className="form-select" value={formData.plan_id} onChange={handleChange}>
-          <option value="">Seleccionar plan</option>
-          {plans.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-      </div>
-
-      <Input label="Fecha inicio" name="start_date" type="date" value={formData.start_date} onChange={handleChange} />
-    </ModalBase>
-  );
-}
-
-function EditModal({ onClose, onSubmit, loading, formData, handleChange }) {
-  return (
-    <ModalBase title="Editar cliente" onClose={onClose} onSubmit={onSubmit} loading={loading}>
-      <Input label="Nombre" name="name" value={formData.name} onChange={handleChange} />
-      <Input label="Apellido" name="lastname" value={formData.lastname} onChange={handleChange} />
-      <Input label="Teléfono" name="phone" value={formData.phone} onChange={handleChange} />
-      <Input label="Correo" name="email" type="email" value={formData.email} onChange={handleChange} />
-    </ModalBase>
-  );
-}
-
-function ChangePlanModal({ onClose, loading, client, plans, selectedPlan, setSelectedPlan, onChangePlan }) {
-  return (
-    <ModalBase title="Cambiar plan" onClose={onClose} onSubmit={(e) => e.preventDefault()} loading={loading} showSubmit={false}>
-      <p className="mb-2">
-        Cliente: <b>{client?.name} {client?.lastname}</b>
-      </p>
-
-      <label className="form-label">Nuevo plan</label>
-      <select className="form-select mb-3" value={selectedPlan} onChange={(e) => setSelectedPlan(e.target.value)}>
-        <option value="">Seleccionar plan</option>
-        {plans.map((p) => (
-          <option key={p.id} value={p.id}>{p.name}</option>
-        ))}
-      </select>
-
-      <button type="button" className="btn btn-danger w-100" disabled={loading || !selectedPlan} onClick={onChangePlan}>
-        Cambiar plan
-      </button>
-    </ModalBase>
-  );
-}
-
-function ModalBase({ title, onClose, onSubmit, loading, children, showSubmit = true, submitText = "Guardar" }) {
-  return (
-    <div className="modal-backdrop-custom">
-      <div className="modal-custom">
-        <div className="modal-header-custom">
-          <h5 className="mb-0">{title}</h5>
-          <button className="btn-close" onClick={onClose} />
-        </div>
-
-        <form onSubmit={onSubmit} className="modal-form">
-          <div className="modal-body-custom">{children}</div>
-
-          <div className="modal-footer-custom">
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
-              Cancelar
-            </button>
-
-            {showSubmit && (
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? "Guardando..." : submitText}
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function Input({ label, name, value, onChange, type = "text" }) {
-  return (
-    <div className="mb-3">
-      <label className="form-label">{label}</label>
-      <input type={type} name={name} className="form-control" value={value} onChange={onChange} />
     </div>
   );
 }

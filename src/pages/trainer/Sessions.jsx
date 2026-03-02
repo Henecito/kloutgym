@@ -7,7 +7,7 @@ import {
 } from "../../services/reservations.service";
 
 /* =========================
-   HELPERS FECHAS (OK TZ)
+   HELPERS FECHAS
 ========================= */
 const todayISO = () => {
   const d = new Date();
@@ -46,12 +46,9 @@ const labelDate = (dateString) => {
   });
 };
 
-/* =========================
-   🔹 FORMATEAR HORA
-========================= */
 const formatTime = (time) => {
   if (!time) return "";
-  return time.slice(0, 5); // HH:MM:SS → HH:MM
+  return time.slice(0, 5);
 };
 
 export default function Sessions() {
@@ -60,40 +57,40 @@ export default function Sessions() {
 
   const [todaySessions, setTodaySessions] = useState([]);
   const [upcomingSessions, setUpcomingSessions] = useState([]);
+  const [pastSessions, setPastSessions] = useState([]);
+
+  const [showPast, setShowPast] = useState(false);
+  const [loadingPast, setLoadingPast] = useState(false);
 
   /* =========================
-     LOAD AGENDA TRAINER
+     LOAD AGENDA PRINCIPAL
   ========================== */
   async function loadAgenda() {
     setLoading(true);
 
     const { data: todayData } = await supabase
       .from("reservations")
-      .select(
-        `
-    id,
-    reservation_date,
-    reservation_time,
-    status,
-    attended,
-    profiles ( name, lastname, phone )
-  `,
-      )
+      .select(`
+        id,
+        reservation_date,
+        reservation_time,
+        status,
+        attended,
+        profiles ( name, lastname, phone )
+      `)
       .eq("reservation_date", today)
       .eq("status", "active")
       .order("reservation_time", { ascending: true });
 
     const { data: upcomingData } = await supabase
       .from("reservations")
-      .select(
-        `
-    id,
-    reservation_date,
-    reservation_time,
-    status,
-    profiles ( name, lastname )
-  `,
-      )
+      .select(`
+        id,
+        reservation_date,
+        reservation_time,
+        status,
+        profiles ( name, lastname )
+      `)
       .gt("reservation_date", today)
       .eq("status", "active")
       .order("reservation_date", { ascending: true })
@@ -105,9 +102,42 @@ export default function Sessions() {
     setLoading(false);
   }
 
+  /* =========================
+     LOAD SESIONES PASADAS (LAZY)
+  ========================== */
+  async function loadPastSessions() {
+    setLoadingPast(true);
+
+    const { data } = await supabase
+      .from("reservations")
+      .select(`
+        id,
+        reservation_date,
+        reservation_time,
+        status,
+        attended,
+        profiles ( name, lastname, phone )
+      `)
+      .lt("reservation_date", todayISO())
+      .eq("status", "active")
+      .order("reservation_date", { ascending: false })
+      .order("reservation_time", { ascending: false })
+      .limit(30);
+
+    setPastSessions(data || []);
+    setLoadingPast(false);
+  }
+
   useEffect(() => {
     loadAgenda();
   }, [today]);
+
+  async function togglePast() {
+    if (!showPast && pastSessions.length === 0) {
+      await loadPastSessions();
+    }
+    setShowPast(!showPast);
+  }
 
   /* =========================
      ASISTIÓ
@@ -128,6 +158,8 @@ export default function Sessions() {
     try {
       await finishReservation(id);
       await loadAgenda();
+      if (showPast) await loadPastSessions();
+
       Swal.fire("Listo", "Asistencia registrada", "success");
     } catch {
       Swal.fire("Error", "No se pudo registrar", "error");
@@ -153,6 +185,8 @@ export default function Sessions() {
     try {
       await cancelReservation(id);
       await loadAgenda();
+      if (showPast) await loadPastSessions();
+
       Swal.fire("Listo", "Sesión marcada como no asistida", "success");
     } catch {
       Swal.fire("Error", "No se pudo cancelar", "error");
@@ -166,6 +200,7 @@ export default function Sessions() {
     <div className="container-fluid">
       <div className="row justify-content-center">
         <div className="col-12 col-xl-7">
+
           {/* HEADER */}
           <div
             className="rounded-4 p-4 mb-4 text-white"
@@ -191,11 +226,9 @@ export default function Sessions() {
           {!loading && (
             <>
               <SectionTitle title="Sesiones del día" />
-
               {todaySessions.length === 0 && (
                 <Empty text="No tienes sesiones este día" />
               )}
-
               {todaySessions.map((r) => (
                 <SessionCard
                   key={r.id}
@@ -210,12 +243,47 @@ export default function Sessions() {
           {!loading && upcomingSessions.length > 0 && (
             <>
               <SectionTitle title="Próximas sesiones" />
-
               {upcomingSessions.map((r) => (
                 <UpcomingCard key={r.id} r={r} />
               ))}
             </>
           )}
+
+          {/* 🔴 SESIONES PASADAS DESPLEGABLE */}
+          <div className="mt-4">
+            <button
+              onClick={togglePast}
+              className="btn w-100 text-start fw-semibold"
+              style={{ background: "#f4f1ff", color: "#6f42c1" }}
+            >
+              {showPast ? "▼" : "►"} Sesiones pendientes anteriores
+            </button>
+
+            {showPast && (
+              <div className="mt-3">
+                {loadingPast && (
+                  <div className="text-center text-muted py-3">
+                    Cargando sesiones anteriores...
+                  </div>
+                )}
+
+                {pastSessions.length === 0 && !loadingPast && (
+                  <Empty text="No hay sesiones pendientes anteriores" />
+                )}
+
+                {pastSessions.map((r) => (
+                  <SessionCard
+                    key={r.id}
+                    r={r}
+                    showDate
+                    onFinish={finishSession}
+                    onCancel={cancelSession}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
     </div>
@@ -228,22 +296,33 @@ export default function Sessions() {
 
 function SectionTitle({ title }) {
   return (
-    <h6 className="fw-semibold text-uppercase text-muted mb-3 mt-4">{title}</h6>
+    <h6 className="fw-semibold text-uppercase text-muted mb-3 mt-4">
+      {title}
+    </h6>
   );
 }
 
 function Empty({ text }) {
   return (
     <div className="card border-0 shadow-sm rounded-4 mb-3">
-      <div className="card-body text-center text-muted py-4">{text}</div>
+      <div className="card-body text-center text-muted py-4">
+        {text}
+      </div>
     </div>
   );
 }
 
-function SessionCard({ r, onFinish, onCancel }) {
+function SessionCard({ r, onFinish, onCancel, showDate = false }) {
   return (
     <div className="card border-0 shadow-sm rounded-4 mb-3">
       <div className="card-body">
+
+        {showDate && (
+          <div className="text-muted small mb-2">
+            {formatDateCL(r.reservation_date)}
+          </div>
+        )}
+
         <div className="d-flex align-items-center gap-3 mb-3">
           <TimeBlock time={r.reservation_time} />
 
@@ -258,34 +337,22 @@ function SessionCard({ r, onFinish, onCancel }) {
           </div>
         </div>
 
-        {r.status === "active" ? (
-          <div className="d-flex flex-column flex-sm-row gap-2">
-            <button
-              className="btn btn-sm w-100 text-white"
-              style={{ background: "#6f42c1" }}
-              onClick={() => onFinish(r.id)}
-            >
-              Asistió
-            </button>
+        <div className="d-flex gap-2">
+          <button
+            className="btn btn-sm w-100 text-white"
+            style={{ background: "#6f42c1" }}
+            onClick={() => onFinish(r.id)}
+          >
+            Asistió
+          </button>
 
-            <button
-              className="btn btn-sm w-100 btn-outline-danger"
-              onClick={() => onCancel(r.id)}
-            >
-              No asistió
-            </button>
-          </div>
-        ) : (
-          <div className="text-end">
-            <span
-              className={`badge px-3 py-2 ${
-                r.attended ? "bg-success" : "bg-secondary"
-              }`}
-            >
-              {r.attended ? "Asistió" : "No asistió"}
-            </span>
-          </div>
-        )}
+          <button
+            className="btn btn-sm w-100 btn-outline-danger"
+            onClick={() => onCancel(r.id)}
+          >
+            No asistió
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -297,7 +364,6 @@ function UpcomingCard({ r }) {
       <div className="card-body d-flex justify-content-between align-items-center">
         <div className="d-flex align-items-center gap-3">
           <TimeBlock time={r.reservation_time} />
-
           <div>
             <div className="fw-semibold">
               {r.profiles?.name} {r.profiles?.lastname}
@@ -307,7 +373,6 @@ function UpcomingCard({ r }) {
             </div>
           </div>
         </div>
-
         <span className="badge bg-light text-dark">Próxima</span>
       </div>
     </div>
